@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ content.title }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f5f7;color:#202a35;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#f3f5f7;border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:20px 10px;">
+        <table role="presentation" width="760" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:760px;background:#ffffff;border-collapse:collapse;border:1px solid #e1e5e9;">
+          <!-- PRIMEPICK GOODS store header -->
+          <tr>
+            <td style="padding:26px 32px;background:#12263a;color:#ffffff;border-bottom:5px solid #e7ad47;">
+              <div style="font-size:12px;line-height:18px;letter-spacing:3px;color:#f3c66c;font-weight:bold;">PRIMEPICK GOODS</div>
+              <div style="padding-top:7px;font-size:14px;line-height:21px;color:#e6edf3;">Thoughtful finds. Everyday value.</div>
+            </td>
+          </tr>
+          <!-- Product title -->
+          <tr>
+            <td style="padding:28px 32px 18px;">
+              <div style="font-size:11px;line-height:16px;letter-spacing:2px;color:#9a6b17;font-weight:bold;text-transform:uppercase;">Featured find</div>
+              <h1 style="margin:8px 0 0;font-size:27px;line-height:1.28;color:#12263a;font-weight:700;">{{ content.title }}</h1>
+            </td>
+          </tr>
+          {% if images %}
+          <!-- Selected product images -->
+          <tr>
+            <td align="center" style="padding:4px 32px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+                <tr>
+                  {% for image in images %}
+                  <td align="center" valign="middle" style="padding:6px;width:{{ 100 // (images|length if images|length < 4 else 4) }}%;">
+                    <img src="{{ image.url }}" alt="{{ image.alt or content.title }}" style="display:block;max-width:100%;max-height:300px;height:auto;border:0;">
+                  </td>
+                  {% if loop.index is divisibleby 4 and not loop.last %}</tr><tr>{% endif %}
+                  {% endfor %}
+                </tr>
+              </table>
+            </td>
+          </tr>
+          {% endif %}
+          <!-- Description -->
+          <tr>
+            <td style="padding:24px 32px;background:#f8fafb;border-top:1px solid #e9edf0;border-bottom:1px solid #e9edf0;">
+              <h2 style="margin:0 0 12px;font-size:18px;line-height:24px;color:#12263a;">About this item</h2>
+              <div style="font-size:15px;line-height:1.75;color:#3e4a55;white-space:pre-line;">{{ content.description }}</div>
+            </td>
+          </tr>
+          {% if content.features %}
+          <!-- Key features -->
+          <tr>
+            <td style="padding:25px 32px 12px;">
+              <h2 style="margin:0 0 12px;font-size:18px;line-height:24px;color:#12263a;">Key features</h2>
+              <ul style="margin:0;padding-left:21px;color:#3e4a55;font-size:14px;line-height:1.75;">
+                {% for feature in content.features %}<li style="padding:2px 0 5px;">{{ feature }}</li>{% endfor %}
+              </ul>
+            </td>
+          </tr>
+          {% endif %}
+          {% if content.specifications %}
+          <!-- Product specifications -->
+          <tr>
+            <td style="padding:16px 32px 24px;">
+              <h2 style="margin:0 0 12px;font-size:18px;line-height:24px;color:#12263a;">Specifications</h2>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.5;">
+                {% for item in content.specifications %}
+                <tr>
+                  <td valign="top" style="width:35%;padding:9px 12px;background:{% if loop.index is odd %}#f6f8fa{% else %}#ffffff{% endif %};border-bottom:1px solid #e5e9ed;color:#526170;font-weight:bold;">{{ item.name }}</td>
+                  <td valign="top" style="padding:9px 12px;background:{% if loop.index is odd %}#f6f8fa{% else %}#ffffff{% endif %};border-bottom:1px solid #e5e9ed;color:#263747;">{{ item.value }}</td>
+                </tr>
+                {% endfor %}
+              </table>
+            </td>
+          </tr>
+          {% endif %}
+          {% if content.package_contents %}
+          <!-- Package contents -->
+          <tr>
+            <td style="padding:0 32px 22px;">
+              <h2 style="margin:0 0 10px;font-size:18px;line-height:24px;color:#12263a;">Package includes</h2>
+              <ul style="margin:0;padding-left:21px;color:#3e4a55;font-size:14px;line-height:1.7;">
+                {% for item in content.package_contents %}<li style="padding:2px 0;">{{ item }}</li>{% endfor %}
+              </ul>
+            </td>
+          </tr>
+          {% endif %}
+          {% if content.usage_instructions %}
+          <!-- Usage instructions -->
+          <tr>
+            <td style="padding:0 32px 22px;">
+              <h2 style="margin:0 0 10px;font-size:18px;line-height:24px;color:#12263a;">Use and care</h2>
+              <ul style="margin:0;padding-left:21px;color:#3e4a55;font-size:14px;line-height:1.7;">
+                {% for item in content.usage_instructions %}<li style="padding:2px 0;">{{ item }}</li>{% endfor %}
+              </ul>
+            </td>
+          </tr>
+          {% endif %}
+          {% if content.warnings %}
+          <!-- Important safety information -->
+          <tr>
+            <td style="padding:17px 20px;margin:0 32px 24px;background:#fff8e9;border-left:4px solid #e7ad47;">
+              <h2 style="margin:0 0 8px;font-size:16px;line-height:22px;color:#66470e;">Important information</h2>
+              <ul style="margin:0;padding-left:19px;color:#5e4e2d;font-size:13px;line-height:1.65;">
+                {% for item in content.warnings %}<li style="padding:2px 0;">{{ item }}</li>{% endfor %}
+              </ul>
+            </td>
+          </tr>
+          {% endif %}
+          <!-- Store section / footer -->
+          <tr>
+            <td style="padding:22px 32px;background:#12263a;color:#e6edf3;text-align:center;">
+              <div style="font-size:14px;line-height:21px;font-weight:bold;color:#ffffff;">Thank you for visiting PRIMEPICK GOODS</div>
+              <div style="padding-top:5px;font-size:12px;line-height:18px;color:#c8d3dc;">Explore our store for more thoughtful everyday finds.</div>
+              <div style="padding-top:14px;border-top:1px solid #34485a;margin-top:16px;font-size:11px;line-height:17px;color:#aebdca;">Please review the item details and selected options before purchase.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

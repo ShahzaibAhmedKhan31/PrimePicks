@@ -1,0 +1,50 @@
+{
+  "name": "primepick-goods-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PrimePick Goods Listing Generator desktop shell",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "overrides": {
+    "app-builder-lib": { "minimatch": "^11.0.9" },
+    "@electron/universal": { "minimatch": "^11.0.9" }
+  },
+  "build": {
+    "appId": "com.primepick.goods.listinggenerator",
+    "productName": "PrimePick Goods Listing Generator",
+    "asar": true,
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json",
+      "assets/primepick.ico"
+    ],
+    "extraResources": [
+      { "from": "resources/backend", "to": "backend", "filter": ["**/*"] },
+      { "from": "resources/playwright-browsers", "to": "playwright-browsers", "filter": ["**/*"] }
+    ],
+    "directories": { "output": "dist" },
+    "win": {
+      "icon": "assets/primepick.ico",
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "PrimePick-Goods-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "installerIcon": "assets/primepick.ico",
+      "uninstallerIcon": "assets/primepick.ico",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PrimePick Goods Listing Generator",
+      "runAfterFinish": true
+    }
+  }
+}
