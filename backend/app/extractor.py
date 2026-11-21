@@ -86,6 +86,178 @@ def _structured_products(soup: BeautifulSoup) -> list[dict[str, object]]:
     return products
 
 
+def _normalized_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.casefold())
+
+
+def _json_text(value: object) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, list):
+        return "\n".join(text for item in value if (text := _json_text(item)))
+    if isinstance(value, dict):
+        preferred = {
+            "text",
+            "content",
+            "description",
+            "overview",
+            "summary",
+            "value",
+            "body",
+            "paragraphs",
+            "children",
+            "items",
+        }
+        selected = [
+            _json_text(item)
+            for key, item in value.items()
+            if _normalized_key(str(key)) in preferred
+        ]
+        selected = [text for text in selected if text]
+        if selected:
+            return "\n".join(selected)
+        return "\n".join(text for item in value.values() if (text := _json_text(item)))
+    return ""
+
+
+def _embedded_metadata(soup: BeautifulSoup) -> dict[str, str]:
+    """Read explicit Open Graph metadata and item AI-overview fields from JSON scripts."""
+    titles: list[str] = []
+    descriptions: list[str] = []
+    overviews: list[str] = []
+    metadata_keys = {"metadata", "metadatas", "metatags", "meta"}
+    overview_keys = {
+        "aioverviewofitem",
+        "aioverviewitem",
+        "itemaioverview",
+        "aiitemoverview",
+        "aioverview",
+        "aiitemsummary",
+    }
+    overview_labels = {"aioverviewofitem", "aioverviewitem", "aioverview"}
+
+    def visit(value: object, in_metadata: bool = False) -> None:
+        if isinstance(value, list):
+            for item in value:
+                visit(item, in_metadata)
+            return
+        if not isinstance(value, dict):
+            return
+
+        current_metadata = in_metadata or any(
+            _normalized_key(str(key)) in metadata_keys and isinstance(item, (dict, list))
+            for key, item in value.items()
+        )
+        normalized_items = {_normalized_key(str(key)): (key, item) for key, item in value.items()}
+        for normalized, (_, item) in normalized_items.items():
+            if normalized in {"ogtitle", "opengraphtitle"}:
+                text = _json_text(item)
+                if text:
+                    titles.append(text)
+            elif normalized == "ogdescription" or (current_metadata and normalized == "description"):
+                text = _json_text(item)
+                if text:
+                    descriptions.append(text)
+            elif normalized in overview_keys:
+                text = _json_text(item)
+                if text:
+                    overviews.append(text)
+
+        if current_metadata:
+            metadata_name = next(
+                (
+                    str(item).strip()
+                    for key, item in value.items()
+                    if _normalized_key(str(key)) in {"property", "name", "key"}
+                    and isinstance(item, str)
+                ),
+                "",
+            )
+            metadata_value = next(
+                (item for key, item in value.items() if _normalized_key(str(key)) in {"content", "value"}),
+                "",
+            )
+            normalized_name = _normalized_key(metadata_name)
+            if normalized_name in {"ogtitle", "opengraphtitle"}:
+                text = _json_text(metadata_value)
+                if text:
+                    titles.append(text)
+            elif normalized_name in {"description", "ogdescription"}:
+                text = _json_text(metadata_value)
+                if text:
+                    descriptions.append(text)
+
+        heading = next(
+            (
+                str(item).strip()
+                for normalized, (_, item) in normalized_items.items()
+                if normalized in {"title", "heading", "label", "name"} and isinstance(item, str)
+            ),
+            "",
+        )
+        if _normalized_key(heading) in overview_labels:
+            overview_fields = {
+                key: item
+                for key, item in value.items()
+                if _normalized_key(str(key)) not in {"title", "heading", "label", "name"}
+            }
+            text = _json_text(overview_fields)
+            if text:
+                overviews.append(text)
+
+        for key, item in value.items():
+            if isinstance(item, (dict, list)):
+                visit(item, current_metadata or _normalized_key(str(key)) in metadata_keys)
+
+    for script in soup.find_all("script"):
+        script_type = str(script.get("type", "")).casefold()
+        if "json" not in script_type and script.get("id") != "__NEXT_DATA__":
+            continue
+        raw = script.string or script.get_text()
+        if not raw or len(raw) > 5_000_000:
+            continue
+        try:
+            visit(json.loads(raw))
+        except (json.JSONDecodeError, TypeError, ValueError, RecursionError):
+            continue
+
+    return {
+        "og_title": titles[0] if titles else "",
+        "description": max(descriptions, key=len) if descriptions else "",
+        "ai_overview": max(overviews, key=len) if overviews else "",
+    }
+
+
+def _ai_overview_from_dom(soup: BeautifulSoup) -> str:
+    label_pattern = re.compile(r"^\s*AI\s+Overview\s+of\s+(?:the\s+)?Item\s*[:：—-]?\s*(.*)$", re.I)
+    candidates: list[str] = []
+    for node in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "strong", "b", "span", "div", "p"]):
+        if not label_pattern.match(_text(node)):
+            continue
+        for ancestor in node.parents:
+            if not isinstance(ancestor, Tag) or ancestor.name in {"body", "html"}:
+                continue
+            raw_lines = ancestor.get_text("\n", strip=True).splitlines()
+            lines = [re.sub(r"\s+", " ", line).strip() for line in raw_lines if line.strip()]
+            body: list[str] = []
+            found_label = False
+            for line in lines:
+                match = label_pattern.match(line)
+                if not found_label:
+                    if match:
+                        found_label = True
+                        if match.group(1).strip():
+                            body.append(match.group(1).strip())
+                    continue
+                body.append(line)
+            overview = "\n".join(body).strip()
+            if found_label and len(overview) > 30 and len(overview) <= 100_000:
+                candidates.append(overview)
+    return min(candidates, key=len) if candidates else ""
+
+
 def _description(soup: BeautifulSoup) -> str:
     selectors = [
         "#product-description",
@@ -275,32 +447,48 @@ def _section_lines(lines: list[str], pattern: re.Pattern[str], max_items: int = 
     return _unique(matches, max_items)
 
 
+def _meta_content(soup: BeautifulSoup, attribute: str, value: str) -> str:
+    node = soup.find("meta", attrs={attribute: value})
+    return str(node.get("content", "")).strip() if node else ""
+
+
 def parse_product_html(html: str, source_url: str) -> ProductData:
     soup = BeautifulSoup(html, "html.parser")
     structured_products = _structured_products(soup)
     structured = structured_products[0] if structured_products else None
-    title = ""
-    for selector in ["h1", "[data-pl='product-title']", "[class*='product-title']"]:
-        node = soup.select_one(selector)
-        if _text(node):
-            title = _text(node)
-            break
+    embedded_metadata = _embedded_metadata(soup)
+
+    # Prefer scraped Open Graph metadata over a possibly generic visible heading.
+    og_title = (
+        embedded_metadata["og_title"]
+        or _meta_content(soup, "property", "og:title")
+        or _meta_content(soup, "name", "og:title")
+    )
+    title = og_title
     if not title:
-        node = soup.find("meta", property="og:title") or soup.find("meta", attrs={"name": "title"})
-        if node:
-            title = str(node.get("content", "")).strip()
+        for selector in ["h1", "[data-pl='product-title']", "[class*='product-title']"]:
+            node = soup.select_one(selector)
+            if _text(node):
+                title = _text(node)
+                break
+    if not title:
+        title = _meta_content(soup, "name", "title")
     if not title and structured and structured.get("name"):
         title = str(structured["name"]).strip()
     if not title and soup.title:
         title = _text(soup.title)
 
-    description = _description(soup)
+    ai_overview = embedded_metadata["ai_overview"] or _ai_overview_from_dom(soup)
+    meta_description = (
+        embedded_metadata["description"]
+        or _meta_content(soup, "name", "description")
+        or _meta_content(soup, "property", "og:description")
+        or _meta_content(soup, "name", "og:description")
+    )
+    # Prefer a complete item overview, then the metadata description, before wider DOM/JSON-LD fallbacks.
+    description = ai_overview or meta_description or _description(soup)
     if not description and structured and structured.get("description"):
         description = str(structured["description"]).strip()
-    if not description:
-        meta_description = soup.find("meta", attrs={"name": "description"}) or soup.find("meta", property="og:description")
-        if meta_description:
-            description = str(meta_description.get("content", "")).strip()
     description_truncated = len(description) > 30_000
     description = description[:30_000]
     specifications = _specifications(soup) or _structured_specifications(structured)
