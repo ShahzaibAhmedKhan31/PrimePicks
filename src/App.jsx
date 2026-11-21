@@ -437,15 +437,15 @@ function App() {
         <BrandMark />
         <div className="sidebar-workspace-label">WORKSPACE</div>
         <nav className="side-nav" aria-label="Main navigation">
-          <button className={`nav-item ${page === 'workspace' ? 'active' : ''}`} onClick={() => setPage('workspace')} type="button">
+          <button className={`nav-item ${page === 'workspace' ? 'active' : ''}`} onClick={() => setPage('workspace')} type="button" aria-label="New listing" title="New listing">
             <Sparkles size={18} strokeWidth={1.8} /><span>New listing</span><ChevronRight className="nav-chevron" size={15} />
           </button>
-          <button className={`nav-item ${page === 'history' ? 'active' : ''}`} onClick={() => { setPage('history'); refreshHistory(); }} type="button">
+          <button className={`nav-item ${page === 'history' ? 'active' : ''}`} onClick={() => { setPage('history'); refreshHistory(); }} type="button" aria-label="Listing history" title="Listing history">
             <HistoryIcon size={18} strokeWidth={1.8} /><span>Listing history</span><span className="nav-count">{history.length}</span>
           </button>
         </nav>
         <div className="sidebar-divider" />
-        <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => { setPage('settings'); setError(''); refreshSettings(); }} type="button">
+        <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => { setPage('settings'); setError(''); refreshSettings(); }} type="button" aria-label="Settings" title="Settings">
           <KeyRound size={18} strokeWidth={1.8} /><span>Settings</span><ChevronRight className="nav-chevron" size={15} />
         </button>
         <div className="sidebar-bottom">
@@ -457,10 +457,12 @@ function App() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb"><span>PrimePick Goods</span><ChevronRight size={14} /><strong>{page === 'workspace' ? 'Listing studio' : page === 'history' ? 'Listing history' : 'Settings'}</strong></div>
-          <div className="topbar-right">
-            <span className="market-pill"><span className="market-dot" /> EBAY US</span>
-            <span className="local-pill"><LockKeyhole size={13} /> LOCAL APP</span>
+          <div className="topbar-inner">
+            <div className="breadcrumb"><span>PrimePick Goods</span><ChevronRight size={14} /><strong>{page === 'workspace' ? 'Listing studio' : page === 'history' ? 'Listing history' : 'Settings'}</strong></div>
+            <div className="topbar-right">
+              <span className="market-pill"><span className="market-dot" /> EBAY US</span>
+              <span className="local-pill"><LockKeyhole size={13} /> LOCAL APP</span>
+            </div>
           </div>
         </header>
 
