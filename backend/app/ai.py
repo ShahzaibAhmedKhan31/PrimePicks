@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from openai import APIConnectionError, APIStatusError, AuthenticationError, RateLimitError
 from openai import AsyncOpenAI
@@ -10,6 +13,28 @@ from pydantic import ValidationError
 from app.models import ListingContent, ProductData
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class TokenUsage:
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+
+def _token_usage(usage: Any) -> TokenUsage | None:
+    if usage is None:
+        return None
+    try:
+        input_tokens = max(0, int(getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", 0)) or 0))
+        output_tokens = max(0, int(getattr(usage, "completion_tokens", getattr(usage, "output_tokens", 0)) or 0))
+        total_tokens = max(0, int(getattr(usage, "total_tokens", input_tokens + output_tokens) or 0))
+    except (TypeError, ValueError):
+        return None
+    if input_tokens == 0 and output_tokens == 0 and total_tokens == 0:
+        return None
+    return TokenUsage(input_tokens, output_tokens, total_tokens or input_tokens + output_tokens)
+
 
 LISTING_RESPONSE_SCHEMA = {
     "type": "object",
@@ -57,7 +82,12 @@ do not guess: add a concise review_flags item so the seller can resolve it. Retu
 only the requested structured JSON. Do not mention AliExpress or write HTML."""
 
 
-async def generate_listing(product: ProductData, api_key: str, model: str) -> ListingContent:
+async def generate_listing(
+    product: ProductData,
+    api_key: str,
+    model: str,
+    on_usage: Callable[[TokenUsage], None] | None = None,
+) -> ListingContent:
     client = AsyncOpenAI(api_key=api_key, timeout=90.0, max_retries=2)
     # The AI needs extracted facts, not the original page URL or remote image URLs.
     source = product.model_dump(mode="json", exclude={"source_url", "images"})
@@ -84,6 +114,12 @@ async def generate_listing(product: ProductData, api_key: str, model: str) -> Li
                 },
             },
         )
+        reported_usage = _token_usage(getattr(response, "usage", None))
+        if reported_usage and on_usage:
+            try:
+                on_usage(reported_usage)
+            except Exception:
+                logger.exception("Could not persist OpenAI token usage")
         raw = response.choices[0].message.content
         if not raw:
             raise ValueError("The AI returned an empty response. Please try generating the listing again.")

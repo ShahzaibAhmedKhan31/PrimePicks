@@ -11,7 +11,7 @@
 
 1. Paste a public AliExpress product URL and select **Extract product**.
 2. A normal Chromium window opens on the product page. If AliExpress asks you to verify that you are human, complete the check in Chromium. Return to the app and press **Continue**. PrimePick Goods does not solve or bypass the challenge.
-3. Review the title, description, specifications, variations, package details, warnings, and image choices. The extractor may not find every detail, so confirm important information on the source page.
+3. Review the title, description, specifications, variations, package details, warnings, and image choices. The extractor prefers the page's Open Graph title and a complete item AI overview when available; otherwise it uses metadata description and other page fallbacks. Confirm important information on the source page.
 4. Select **Generate eBay copy**. OpenAI creates a structured draft; the app displays any missing or uncertain facts as private seller review notes.
 5. Edit the title and listing fields as needed. Review product compatibility and safety details before publishing.
 6. Select **Preview HTML**. Switch between **Preview** and **HTML source**, then **Copy HTML**, **Download**, or **Save to history**.
@@ -19,6 +19,10 @@
 ## Saved listings
 
 Choose **Listing history** to reopen a saved listing. From its preview you can edit, copy, or download the HTML again. History is local to this Windows user and does not sync to eBay or another device.
+
+## OpenAI usage
+
+Open **Settings** to view all-time input, output, and total tokens plus estimated USD spend and the number of generations tracked on this computer. Usage totals persist locally in SQLite. Dollar amounts are estimates based on built-in standard model rates; cached-token discounts, price changes, credits, taxes, and account adjustments may make the OpenAI invoice differ. Token usage for an unrecognized model is still counted, but its cost is excluded from the USD estimate.
 
 ## Helpful notes
 

@@ -16,7 +16,8 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import database
-from app.ai import generate_listing
+from app.ai import TokenUsage, generate_listing
+from app.ai_pricing import get_model_rates
 from app.config import DEFAULT_MODEL, get_frontend_dir
 from app.extractor import ExtractionError, extract_product, validate_aliexpress_url
 from app.models import (
@@ -95,6 +96,11 @@ async def handle_unexpected_error(request: Request, error: Exception) -> JSONRes
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "app": "PrimePick Goods Listing Generator"}
+
+
+@app.get("/api/usage")
+async def get_openai_usage() -> dict[str, int | float]:
+    return database.get_openai_usage_summary()
 
 
 async def _run_extraction(job: ExtractionJob, url: str) -> None:
@@ -178,8 +184,21 @@ async def generate(request: GenerateRequest) -> dict[str, Any]:
     if not api_key:
         raise HTTPException(status_code=400, detail="Add your OpenAI API key in Settings before generating listing copy.")
     model = database.get_preference("openai_model", DEFAULT_MODEL)
+
+    def record_usage(usage: TokenUsage) -> None:
+        rates = get_model_rates(model)
+        input_price, output_price = rates if rates else (None, None)
+        database.record_openai_usage(
+            model=model,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            total_tokens=usage.total_tokens,
+            input_price_per_million=input_price,
+            output_price_per_million=output_price,
+        )
+
     try:
-        content = await generate_listing(request.product, api_key, model)
+        content = await generate_listing(request.product, api_key, model, on_usage=record_usage)
     except ValueError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
     return {"content": content.model_dump(mode="json")}

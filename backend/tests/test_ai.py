@@ -1,10 +1,12 @@
+import asyncio
 import json
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
-from app.ai import LISTING_RESPONSE_SCHEMA
-from app.models import ListingContent
+from app.ai import LISTING_RESPONSE_SCHEMA, TokenUsage, generate_listing
+from app.models import ListingContent, ProductData
 
 
 def test_structured_ai_response_validates_all_expected_fields():
@@ -38,3 +40,35 @@ def test_invalid_ai_response_is_rejected_instead_of_returned_as_html():
     }
     with pytest.raises(ValidationError):
         ListingContent.model_validate(payload)
+
+
+def test_reported_usage_is_captured_even_when_the_draft_fails_validation(monkeypatch):
+    usage = SimpleNamespace(prompt_tokens=23, completion_tokens=11, total_tokens=34)
+
+    async def create_completion(**_kwargs):
+        return SimpleNamespace(
+            usage=usage,
+            choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))],
+        )
+
+    class FakeOpenAIClient:
+        def __init__(self, **_kwargs):
+            self.chat = SimpleNamespace(
+                completions=SimpleNamespace(create=create_completion),
+            )
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr("app.ai.AsyncOpenAI", FakeOpenAIClient)
+    recorded = []
+    product = ProductData(
+        source_url="https://www.aliexpress.com/item/123.html",
+        title="Portable Reading Lamp",
+        description="A USB-powered lamp.",
+    )
+
+    with pytest.raises(ValueError, match="did not pass validation"):
+        asyncio.run(generate_listing(product, "sk-test", "gpt-4o-mini", on_usage=recorded.append))
+
+    assert recorded == [TokenUsage(input_tokens=23, output_tokens=11, total_tokens=34)]
