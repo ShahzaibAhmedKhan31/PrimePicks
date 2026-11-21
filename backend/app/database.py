@@ -47,6 +47,19 @@ def initialize_database() -> None:
                 value TEXT NOT NULL
             )"""
         )
+        connection.execute(
+            """CREATE TABLE IF NOT EXISTS openai_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                model TEXT NOT NULL,
+                input_tokens INTEGER NOT NULL,
+                output_tokens INTEGER NOT NULL,
+                total_tokens INTEGER NOT NULL,
+                input_price_per_million REAL,
+                output_price_per_million REAL,
+                estimated_cost_usd REAL
+            )"""
+        )
 
 
 def get_preference(key: str, default: str = "") -> str:
@@ -62,6 +75,63 @@ def set_preference(key: str, value: str) -> None:
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value),
         )
+
+
+def record_openai_usage(
+    *,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    total_tokens: int,
+    input_price_per_million: float | None,
+    output_price_per_million: float | None,
+) -> None:
+    estimated_cost = None
+    if input_price_per_million is not None and output_price_per_million is not None:
+        estimated_cost = round(
+            (input_tokens * input_price_per_million + output_tokens * output_price_per_million) / 1_000_000,
+            12,
+        )
+    created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with _connect() as connection:
+        connection.execute(
+            """INSERT INTO openai_usage
+            (created_at, model, input_tokens, output_tokens, total_tokens,
+             input_price_per_million, output_price_per_million, estimated_cost_usd)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                created_at,
+                model,
+                input_tokens,
+                output_tokens,
+                total_tokens,
+                input_price_per_million,
+                output_price_per_million,
+                estimated_cost,
+            ),
+        )
+
+
+def get_openai_usage_summary() -> dict[str, int | float]:
+    with _connect() as connection:
+        row = connection.execute(
+            """SELECT COUNT(*) AS request_count,
+                      COALESCE(SUM(input_tokens), 0) AS input_tokens,
+                      COALESCE(SUM(output_tokens), 0) AS output_tokens,
+                      COALESCE(SUM(total_tokens), 0) AS total_tokens,
+                      COALESCE(SUM(estimated_cost_usd), 0) AS estimated_cost_usd,
+                      COALESCE(SUM(CASE WHEN estimated_cost_usd IS NULL THEN 1 ELSE 0 END), 0)
+                          AS unpriced_request_count
+               FROM openai_usage"""
+        ).fetchone()
+    return {
+        "request_count": int(row["request_count"]),
+        "input_tokens": int(row["input_tokens"]),
+        "output_tokens": int(row["output_tokens"]),
+        "total_tokens": int(row["total_tokens"]),
+        "estimated_cost_usd": round(float(row["estimated_cost_usd"]), 12),
+        "unpriced_request_count": int(row["unpriced_request_count"]),
+    }
 
 
 def save_listing(product: ProductData, content: ListingContent, html: str) -> dict[str, Any]:

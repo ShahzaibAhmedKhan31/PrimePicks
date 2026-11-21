@@ -11,7 +11,7 @@ PrimePick Goods is a local-first desktop application for turning an AliExpress p
 - **Product review:** edit the extracted title and description, inspect specifications/variations/package details, and select product images.
 - **AI content editor:** generate and edit an 80-character eBay title, description, features, specifications, package contents, instructions, warnings, and private review flags.
 - **Branded HTML:** Jinja2 builds a script-free, table-based PRIMEPICK GOODS listing with inline styling. It is rendered in a sandboxed iframe; source view, copy, and HTML download are provided.
-- **History and settings:** listings are stored in local SQLite. The OpenAI key is not returned to the UI and is stored in the OS credential vault when available (encrypted local fallback otherwise).
+- **History, settings, and OpenAI usage:** listings, token totals, and estimated USD usage persist in local SQLite. Settings shows all-time input/output tokens, generations, and estimated spend; the OpenAI key is not returned to the UI and is stored in the OS credential vault when available (encrypted local fallback otherwise).
 - **Windows desktop packaging:** Electron starts and shuts down a bundled FastAPI backend. The Windows build bundles frontend files, Python backend, Chromium, and an NSIS installer with desktop/start-menu shortcuts.
 
 ## End-user workflow
@@ -24,7 +24,7 @@ PrimePick Goods is a local-first desktop application for turning an AliExpress p
 6. Generate the copy, review the private seller notes, edit the fields, and preview the branded HTML.
 7. Copy the complete source, download an `.html` file, and/or save the listing to local history.
 
-Internet access is needed to open AliExpress and call OpenAI. OpenAI usage is billed to the user's own OpenAI account according to that account's terms and pricing.
+Internet access is needed to open AliExpress and call OpenAI. OpenAI usage is billed to the user's own OpenAI account according to that account's terms and pricing. The Settings page also shows locally stored token counts and an estimated USD total; built-in rates may differ from actual invoices, and unknown models are counted but not priced.
 
 ## Run in developer mode
 
@@ -77,15 +77,16 @@ python -m pip install -r backend/requirements-dev.txt
 python -m pytest -q backend
 ```
 
-The tests cover URL restrictions and DOM extraction, missing-information flags, structured AI response validation, title limits, and safe/brand-template HTML rendering. They do not access AliExpress or OpenAI.
+The tests cover URL restrictions and DOM extraction, missing-information flags, structured AI response validation and token accounting, persisted usage totals, model-price matching, title limits, and safe/brand-template HTML rendering. They do not access AliExpress or OpenAI.
 
 ## Project layout
 
 ```text
 backend/app/
-  ai.py                 OpenAI prompt and structured response validation
+  ai.py                 OpenAI prompt, response validation, and token usage capture
+  ai_pricing.py         Built-in per-model USD pricing estimates
   config.py             Per-user data paths and packaged resource paths
-  database.py           SQLite history and preferences
+  database.py           SQLite history, preferences, and usage totals
   extractor.py          Visible Playwright browser and BeautifulSoup extraction
   main.py               FastAPI routes and extraction job lifecycle
   models.py             Pydantic API/data contracts

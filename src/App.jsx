@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Activity,
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
@@ -51,6 +52,21 @@ async function api(path, options = {}) {
 }
 
 const initialSettings = { api_key_configured: false, model: 'gpt-4o-mini' };
+const initialUsage = {
+  request_count: 0,
+  input_tokens: 0,
+  output_tokens: 0,
+  total_tokens: 0,
+  estimated_cost_usd: 0,
+  unpriced_request_count: 0,
+};
+const formatCount = (value) => new Intl.NumberFormat('en-US').format(Number(value) || 0);
+const formatUsd = (value) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return 'Not available';
+  if (amount > 0 && amount < 0.000001) return '<$0.000001';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(amount);
+};
 const statusLabels = {
   opening: 'Opening product page',
   waiting: 'Waiting for product page',
@@ -155,6 +171,9 @@ function App() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState(null);
   const [settings, setSettings] = useState(initialSettings);
+  const [usage, setUsage] = useState(initialUsage);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [settingsModel, setSettingsModel] = useState(initialSettings.model);
   const [clearSavedKey, setClearSavedKey] = useState(false);
@@ -169,6 +188,18 @@ function App() {
     setToast({ message, tone });
     window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const refreshUsage = useCallback(async () => {
+    setUsageLoading(true);
+    setUsageError('');
+    try {
+      setUsage(await api('/usage'));
+    } catch (requestError) {
+      setUsageError(requestError.message);
+    } finally {
+      setUsageLoading(false);
+    }
   }, []);
 
   const refreshSettings = useCallback(async () => {
@@ -316,6 +347,7 @@ function App() {
         notify('Add your OpenAI API key in Settings to generate listing copy.', 'warning');
       }
     } finally {
+      void refreshUsage();
       setBusy('');
     }
   };
@@ -445,7 +477,7 @@ function App() {
           </button>
         </nav>
         <div className="sidebar-divider" />
-        <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => { setPage('settings'); setError(''); refreshSettings(); }} type="button" aria-label="Settings" title="Settings">
+        <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => { setPage('settings'); setError(''); refreshSettings(); refreshUsage(); }} type="button" aria-label="Settings" title="Settings">
           <KeyRound size={18} strokeWidth={1.8} /><span>Settings</span><ChevronRight className="nav-chevron" size={15} />
         </button>
         <div className="sidebar-bottom">
@@ -539,7 +571,7 @@ function App() {
                   {content && <div className="workflow-status"><BadgeCheck size={15} /> Draft ready</div>}
                 </div>
 
-                {tab === 'product' && <ProductReview product={product} selectedImageCount={selectedImageCount} toggleImage={toggleImage} updateProduct={updateProduct} onGenerate={generateCopy} busy={busy} apiKeyConfigured={settings.api_key_configured} onSettings={() => setPage('settings')} />}
+                {tab === 'product' && <ProductReview product={product} selectedImageCount={selectedImageCount} toggleImage={toggleImage} updateProduct={updateProduct} onGenerate={generateCopy} busy={busy} apiKeyConfigured={settings.api_key_configured} onSettings={() => { setPage('settings'); setError(''); refreshSettings(); refreshUsage(); }} />}
                 {tab === 'copy' && content && <ContentEditor content={content} setContent={(next) => { setContent(next); setHtml(''); setSavedListingId(null); }} busy={busy} onPreview={() => renderHtml(true)} onBack={() => setTab('product')} />}
                 {tab === 'preview' && content && <PreviewPanel html={html} mode={previewMode} setMode={setPreviewMode} busy={busy} onRefresh={() => renderHtml(false)} onCopy={copyHtml} onDownload={downloadHtml} onSave={saveListing} savedListingId={savedListingId} onEdit={() => setTab('copy')} />}
               </>
@@ -562,6 +594,9 @@ function App() {
         {page === 'settings' && (
           <SettingsPage
             settings={settings}
+            usage={usage}
+            usageLoading={usageLoading}
+            usageError={usageError}
             apiKey={apiKey}
             setApiKey={setApiKey}
             model={settingsModel}
@@ -779,12 +814,50 @@ function HistoryPage({ items, loading, reload, onOpen }) {
   );
 }
 
-function SettingsPage({ settings, apiKey, setApiKey, model, setModel, clearSavedKey, setClearSavedKey, busy, onSave }) {
+function UsageSummary({ usage, loading, error }) {
+  const unpricedRequests = Number(usage.unpriced_request_count) || 0;
+  const requestCount = Number(usage.request_count) || 0;
+  const allRequestsUnpriced = requestCount > 0 && unpricedRequests >= requestCount;
+  const spend = allRequestsUnpriced ? 'Unpriced' : formatUsd(usage.estimated_cost_usd);
+
+  return (
+    <section className="panel usage-card" aria-labelledby="usage-heading">
+      <div className="usage-card-header">
+        <div className="usage-icon"><Activity size={18} /></div>
+        <div><h2 id="usage-heading">OpenAI usage</h2><p>All-time totals recorded on this computer.</p></div>
+        <span className="usage-period">ALL-TIME</span>
+      </div>
+      <div className="usage-stats">
+        <div className="usage-stat">
+          <span className="usage-stat-label">Estimated spend</span>
+          <strong className="usage-stat-value">{loading ? 'Loading…' : spend}</strong>
+          <span className="usage-stat-detail">{allRequestsUnpriced ? 'No known rate for these model requests' : unpricedRequests ? 'USD · excludes unpriced requests' : 'USD · based on model token rates'}</span>
+        </div>
+        <div className="usage-stat">
+          <span className="usage-stat-label">Total tokens</span>
+          <strong className="usage-stat-value">{loading ? 'Loading…' : formatCount(usage.total_tokens)}</strong>
+          <span className="usage-stat-detail">Input {formatCount(usage.input_tokens)} · Output {formatCount(usage.output_tokens)}</span>
+        </div>
+        <div className="usage-stat">
+          <span className="usage-stat-label">Generations tracked</span>
+          <strong className="usage-stat-value">{loading ? 'Loading…' : formatCount(requestCount)}</strong>
+          <span className="usage-stat-detail">Successful API responses with token usage</span>
+        </div>
+      </div>
+      <p className="usage-rate-note"><ShieldCheck size={14} /> Costs are estimates from reported tokens and built-in model rates. Cached-token discounts, price changes, credits, taxes, or account adjustments may differ from your OpenAI invoice.</p>
+      {unpricedRequests > 0 && <p className="usage-unpriced-note">Dollar totals exclude {formatCount(unpricedRequests)} request{unpricedRequests === 1 ? '' : 's'} using a model without a built-in rate. Token counts are still included.</p>}
+      {error && <p className="usage-error" role="status">Usage totals could not be refreshed: {error}</p>}
+    </section>
+  );
+}
+
+function SettingsPage({ settings, usage, usageLoading, usageError, apiKey, setApiKey, model, setModel, clearSavedKey, setClearSavedKey, busy, onSave }) {
   return (
     <div className="page-content settings-page">
       <div className="page-heading-row">
-        <div><div className="eyebrow"><span className="eyebrow-line" /> PREFERENCES</div><h1>Settings</h1><p className="page-subtitle">Connect OpenAI and choose how listing copy is generated.</p></div>
+        <div><div className="eyebrow"><span className="eyebrow-line" /> PREFERENCES</div><h1>Settings</h1><p className="page-subtitle">Connect OpenAI, review estimated usage, and choose how listing copy is generated.</p></div>
       </div>
+      <UsageSummary usage={usage} loading={usageLoading} error={usageError} />
       <div className="settings-layout">
         <form className="panel settings-panel" onSubmit={onSave}>
           <div className="panel-heading">

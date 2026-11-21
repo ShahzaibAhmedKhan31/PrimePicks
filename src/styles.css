@@ -318,6 +318,22 @@ h1, h2 { font-family: Manrope, 'DM Sans', sans-serif; color: var(--ink); }
 .history-empty p { max-width: 370px; margin: 0; color: #8794a0; font-size: 9.5px; line-height: 1.6; }
 
 .settings-page { max-width: 1460px; }
+.usage-card { display: grid; gap: 13px; max-width: 1200px; margin: 25px 0 0; padding: 16px; }
+.usage-card-header { display: flex; align-items: center; gap: 10px; }
+.usage-icon { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; color: #3f718e; background: #edf4f8; border-radius: 8px; }
+.usage-card-header > div:nth-child(2) { flex: 1; min-width: 0; }
+.usage-card-header h2 { margin: 0 0 3px; color: #30475b; font-family: Manrope, sans-serif; font-size: 13px; }
+.usage-card-header p { margin: 0; color: #8795a1; font-size: 9px; }
+.usage-period { padding: 5px 7px; color: #657d91; background: #f5f8fa; border: 1px solid #e6ecf0; border-radius: 5px; font-size: 7px; font-weight: 700; letter-spacing: .65px; }
+.usage-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.usage-stat { display: grid; align-content: start; gap: 5px; min-width: 0; padding: 11px 12px; background: #f8fafb; border: 1px solid #edf0f2; border-radius: 7px; }
+.usage-stat-label { color: #718292; font-size: 9px; font-weight: 700; }
+.usage-stat-value { overflow-wrap: anywhere; color: #20364a; font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -.35px; }
+.usage-stat-detail { color: #8b98a3; font-size: 8.5px; line-height: 1.45; }
+.usage-rate-note, .usage-unpriced-note, .usage-error { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: #81909d; font-size: 8.5px; line-height: 1.5; }
+.usage-rate-note svg { flex: 0 0 auto; margin-top: 1px; color: #57937d; }
+.usage-unpriced-note { padding: 8px 10px; color: #80611e; background: #fff9eb; border: 1px solid #f1e2be; border-radius: 6px; }
+.usage-error { color: #a04c43; }
 .settings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; max-width: 1200px; align-items: start; gap: 16px; margin-top: 25px; }
 .settings-panel { overflow: hidden; }
 .connection-tag { margin-left: auto; color: #9a7c46; background: #faf6ec; border-color: #f0e6cd; }
@@ -494,6 +510,10 @@ h1, h2 { font-family: Manrope, 'DM Sans', sans-serif; color: var(--ink); }
   .history-thumb { width: 43px; height: 43px; }
   .history-card-open { font-size: 0; }
   .history-card-open svg { width: 18px; height: 18px; }
+  .usage-card { padding: 13px 12px; }
+  .usage-stats { grid-template-columns: 1fr; gap: 6px; }
+  .usage-stat { padding: 9px 10px; }
+  .usage-stat-value { font-size: 17px; }
   .settings-aside { grid-template-columns: 1fr; }
   .settings-footnote { grid-column: auto; }
   .settings-fields { padding: 15px 12px; }

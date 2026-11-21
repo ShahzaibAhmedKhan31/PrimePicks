@@ -20,6 +20,10 @@
 
 Choose **Listing history** to reopen a saved listing. From its preview you can edit, copy, or download the HTML again. History is local to this Windows user and does not sync to eBay or another device.
 
+## OpenAI usage
+
+Open **Settings** to view all-time input, output, and total tokens plus estimated USD spend and the number of generations tracked on this computer. Usage totals persist locally in SQLite. Dollar amounts are estimates based on built-in standard model rates; cached-token discounts, price changes, credits, taxes, and account adjustments may make the OpenAI invoice differ. Token usage for an unrecognized model is still counted, but its cost is excluded from the USD estimate.
+
 ## Helpful notes
 
 - The product browser is visible and uses a local profile, so normal page cookies can persist between runs. You are responsible for any sign-in activity in that browser.
