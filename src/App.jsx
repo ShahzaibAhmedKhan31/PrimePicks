@@ -519,7 +519,7 @@ function App() {
               <div className="url-card-icon"><LinkIcon /></div>
               <div className="url-card-copy">
                 <label htmlFor="product-url">AliExpress product URL</label>
-                <p>Paste a public product link. Chromium will open so you can complete any verification yourself.</p>
+                <p>Paste a public product link. Microsoft Edge will open so you can complete any verification yourself.</p>
               </div>
               <form className="url-form" onSubmit={startExtraction}>
                 <div className="url-input-wrap">
@@ -543,7 +543,7 @@ function App() {
                 <div className="progress-copy">
                   <strong>{statusLabels[job.status] || 'Working on your product'}</strong>
                   <p>{job.message}</p>
-                  {job.status === 'verification_required' && <span className="verification-hint">Switch to the Chromium window, complete the challenge there, then continue below.</span>}
+                  {job.status === 'verification_required' && <span className="verification-hint">Switch to the Microsoft Edge window, complete the challenge there, then continue below.</span>}
                 </div>
                 <div className="progress-actions">
                   {job.status === 'verification_required' && <button className="button button-primary button-small" onClick={continueAfterVerification} type="button"><Check size={15} /> Continue</button>}

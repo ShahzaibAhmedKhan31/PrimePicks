@@ -56,13 +56,9 @@ fi
 "$VENV_PY" -m pip install -r "$(win "$ROOT/backend/requirements-build.txt")" \
   || fail "Could not install the backend build requirements."
 
-# --- 3. Bundled Chromium -----------------------------------------------------
-say "Downloading Playwright Chromium"
+# --- 3. Browser ---------------------------------------------------------------
+# No browser is bundled: the app drives the Microsoft Edge that ships with Windows.
 rm -rf "$BROWSER_DIR"
-mkdir -p "$BROWSER_DIR"
-# --no-shell: the app always runs headed Chromium, so skip the ~290 MB headless shell.
-PLAYWRIGHT_BROWSERS_PATH="$(win "$BROWSER_DIR")" "$VENV_PY" -m playwright install --no-shell chromium \
-  || fail "Could not download the bundled Playwright Chromium browser."
 
 # --- 4. Backend executable (PyInstaller) -------------------------------------
 say "Packaging Python backend"

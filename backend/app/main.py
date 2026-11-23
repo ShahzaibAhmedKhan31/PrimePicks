@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 class ExtractionJob:
     id: str
     status: str = "opening"
-    message: str = "Opening the product page in Chromium..."
+    message: str = "Opening the product page in Microsoft Edge..."
     product: ProductData | None = None
     error: str | None = None
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"))

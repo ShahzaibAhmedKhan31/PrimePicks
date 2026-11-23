@@ -1,25 +1,25 @@
 # PrimePick Goods — AI eBay Listing Generator
 
-PrimePick Goods is a local-first desktop application for turning an AliExpress product page into an editable, fact-led eBay US listing. It combines a visible Chromium browser (so the seller can complete verification manually), a modular Python extractor, OpenAI structured JSON output, a Jinja2-branded HTML template, and local SQLite history.
+PrimePick Goods is a local-first desktop application for turning an AliExpress product page into an editable, fact-led eBay US listing. It combines a visible Microsoft Edge window (so the seller can complete verification manually), a modular Python extractor, OpenAI structured JSON output, a Jinja2-branded HTML template, and local SQLite history.
 
 > **Repository note:** the starting repository contained only a README. There was no AliExpress scraper or client HTML template to inspect or reuse. This implementation therefore adds a conservative DOM-based extractor and a new PRIMEPICK GOODS starter template. If the client has the original store template, replace `backend/app/templates/listing.html` while keeping its dynamic fields; the template remains independent from AI prompts and extraction logic.
 
 ## What is included
 
 - **Dashboard:** paste an AliExpress URL and watch clear extraction progress.
-- **Visible verification:** Chromium opens on the user's desktop. If a human check appears, the app waits while the user completes it and presses **Continue**. There is no CAPTCHA bypass, stealth mode, or access-restriction workaround.
+- **Visible verification:** Microsoft Edge opens on the user's desktop. If a human check appears, the app waits while the user completes it and presses **Continue**. There is no CAPTCHA bypass, stealth mode, or access-restriction workaround.
 - **Product review:** edit the extracted title and description, inspect specifications/variations/package details, and select product images.
 - **AI content editor:** generate and edit an 80-character eBay title, description, features, specifications, package contents, instructions, warnings, and private review flags.
 - **Branded HTML:** Jinja2 builds a script-free, table-based PRIMEPICK GOODS listing with inline styling. It is rendered in a sandboxed iframe; source view, copy, and HTML download are provided.
 - **History, settings, and OpenAI usage:** listings, token totals, and estimated USD usage persist in local SQLite. Settings shows all-time input/output tokens, generations, and estimated spend; the OpenAI key is not returned to the UI and is stored in the OS credential vault when available (encrypted local fallback otherwise).
-- **Windows desktop packaging:** Electron starts and shuts down a bundled FastAPI backend. The Windows build bundles frontend files, Python backend, Chromium, and an NSIS installer with desktop/start-menu shortcuts.
+- **Windows desktop packaging:** Electron starts and shuts down a bundled FastAPI backend. The Windows build bundles the frontend and Python backend in an NSIS installer with desktop/start-menu shortcuts. No browser is bundled: extraction drives the Microsoft Edge that ships with Windows (falling back to Google Chrome).
 
 ## End-user workflow
 
 1. Install and open **PrimePick Goods Listing Generator**.
 2. Open **Settings**, paste an OpenAI API key, and save it. The app does not include or supply an API key.
 3. Paste one public AliExpress product URL and select **Extract product**.
-4. If Chromium displays a CAPTCHA or human-verification screen, complete it yourself in that visible window and select **Continue** in the app. If the product page cannot be read, the app will explain that and will not silently create a listing.
+4. If Edge displays a CAPTCHA, robot check, or "unusual network activity" screen, complete it yourself in that visible window and select **Continue** in the app. If the product page cannot be read, the app will explain that and will not silently create a listing.
 5. Review the extracted facts and choose the images to use.
 6. Generate the copy, review the private seller notes, edit the fields, and preview the branded HTML.
 7. Copy the complete source, download an `.html` file, and/or save the listing to local history.
@@ -28,7 +28,7 @@ Internet access is needed to open AliExpress and call OpenAI. OpenAI usage is bi
 
 ## Run in developer mode
 
-Prerequisites: Python 3.11+, Node.js 22.12+ for the desktop shell/Windows installer (Node.js 20+ is sufficient for the React-only dev server), npm, and the Playwright Chromium browser. These are developer requirements only; the packaged Windows user does not install Python, Node.js, or Chromium manually.
+Prerequisites: Python 3.11+, Node.js 22.12+ for the desktop shell/Windows installer (Node.js 20+ is sufficient for the React-only dev server), npm, and Microsoft Edge or Google Chrome (or Playwright Chromium via `python -m playwright install chromium`). These are developer requirements only; the packaged Windows user does not install Python or Node.js.
 
 ### 1. Python backend
 
@@ -50,7 +50,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite address it prints (normally `http://localhost:5173`). Vite proxies `/api` requests to the local backend on port `8765`. The visible Chromium browser is launched by the Python backend on the same computer.
+Open the Vite address it prints (normally `http://localhost:5173`). Vite proxies `/api` requests to the local backend on port `8765`. The visible Edge (or Chrome/Chromium) window is launched by the Python backend on the same computer.
 
 Optional developer defaults are documented in `.env.example`. The OpenAI key should be entered through the app's Settings page, not committed to a file or source control.
 
@@ -74,13 +74,13 @@ The Bash script picks Python automatically. To use a specific interpreter, set i
 
 Upload `desktop/dist/PrimePick-Goods-Setup-<version>.exe` to a **GitHub Release** (Releases → Draft a new release → attach the file) or to Google Drive/OneDrive, and send the user the download link. Users only need [docs/end-user.md](docs/end-user.md).
 
-Both scripts build the React UI, installs backend build dependencies in `.venv`, downloads Playwright Chromium into `desktop/resources/playwright-browsers`, packages the backend with PyInstaller, and creates an NSIS installer at:
+Both scripts build the React UI, install backend build dependencies, package the backend with PyInstaller, and creates an NSIS installer at:
 
 ```text
-desktop/dist/PrimePick-Goods-Setup-0.1.0.exe
+desktop/dist/PrimePick-Goods-Setup-0.1.1.exe
 ```
 
-The installer bundles Chromium and may be large. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs and downloaded browsers are ignored by Git.
+No browser is bundled (the app uses the installed Microsoft Edge), which keeps the installer around 175 MB. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs and downloaded browsers are ignored by Git.
 
 ## Tests
 
@@ -119,4 +119,4 @@ docs/                   Behavior and packaging notes
 - The AI is instructed not to invent claims, but generated text must still be reviewed by the seller. Missing/uncertain extraction details are surfaced as private review flags and are not included in the public HTML.
 - Product text sent to OpenAI is sent to the user's configured OpenAI account for generation. The app has no shared service or bundled credential.
 - The generated template uses inline styles and tables, with no scripts or external stylesheets. eBay may sanitize description HTML and platform policies can change; inspect the final listing in eBay before publishing.
-- Listing history, application preferences, encrypted fallback credentials, the persistent Chromium profile, and backend diagnostic logs live under the current user's app-data folder. Removing the app does not necessarily remove this user data; remove listings/API credentials in the app or clear that folder when appropriate.
+- Listing history, application preferences, encrypted fallback credentials, the persistent browser profile, and backend diagnostic logs live under the current user's app-data folder. Removing the app does not necessarily remove this user data; remove listings/API credentials in the app or clear that folder when appropriate.

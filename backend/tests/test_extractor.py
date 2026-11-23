@@ -131,6 +131,26 @@ def test_verification_screen_is_flagged_for_manual_review():
     assert not looks_like_verification("https://www.aliexpress.com/item/123.html", "<main>Portable reading lamp</main>")
 
 
+def test_aliexpress_network_activity_block_page_is_flagged():
+    for message in (
+        "We have detected inappropriate network activity. Please slide to verify.",
+        "Sorry, we have detected unusual traffic from your network.",
+        "We detected unusual network activity from your device",
+    ):
+        assert looks_like_verification("https://www.aliexpress.com/item/123.html", f"<div>{message}</div>")
+
+
+def test_aliexpress_punish_url_is_flagged():
+    assert looks_like_verification(
+        "https://www.aliexpress.com/_____tmd_____/punish?x5secdata=abc&x5step=1", "<div></div>"
+    )
+
+
+def test_product_text_mentioning_activity_is_not_flagged():
+    html = "<main><h1>Fitness tracker</h1><p>Tracks daily activity and network-free sleep data.</p></main>"
+    assert not looks_like_verification("https://www.aliexpress.com/item/123.html", html)
+
+
 def test_only_aliexpress_urls_are_allowed():
     assert validate_aliexpress_url("https://www.aliexpress.com/item/123.html").endswith("123.html")
     try:

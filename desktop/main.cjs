@@ -38,7 +38,6 @@ function launchBackend(port) {
   if (app.isPackaged) {
     // PyInstaller --onedir writes <distpath>/PrimePickGoodsBackend/PrimePickGoodsBackend.exe
     const executable = path.join(process.resourcesPath, 'backend', 'PrimePickGoodsBackend', 'PrimePickGoodsBackend.exe');
-    env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.resourcesPath, 'playwright-browsers');
     backendProcess = spawn(executable, ['--host', '127.0.0.1', '--port', String(port)], {
       cwd: path.dirname(executable),
       env,
