@@ -56,13 +56,25 @@ Optional developer defaults are documented in `.env.example`. The OpenAI key sho
 
 ## Windows installer build
 
-The checked-in installer script targets **Windows x64**. Run it from a Windows build machine with Python 3.11+, Node.js 20+, npm, and PowerShell:
+The installer scripts target **Windows x64**. The build machine needs Python 3.11+, Node.js 22.12+, and npm. Run one of these:
+
+```bash
+# Git Bash: use this when PowerShell scripts are blocked
+bash scripts/build_windows.sh
+```
 
 ```powershell
+# PowerShell
 .\scripts\build_windows.ps1
 ```
 
-The script builds the React UI, installs backend build dependencies in `.venv`, downloads Playwright Chromium into `desktop/resources/playwright-browsers`, packages the backend with PyInstaller, and creates an NSIS installer at:
+The Bash script picks Python automatically. To use a specific interpreter, set it explicitly, e.g. `PYTHON=/c/Python314/python.exe bash scripts/build_windows.sh`.
+
+### Sharing the installer with users (free)
+
+Upload `desktop/dist/PrimePick-Goods-Setup-<version>.exe` to a **GitHub Release** (Releases → Draft a new release → attach the file) or to Google Drive/OneDrive, and send the user the download link. Users only need [docs/end-user.md](docs/end-user.md).
+
+Both scripts build the React UI, installs backend build dependencies in `.venv`, downloads Playwright Chromium into `desktop/resources/playwright-browsers`, packages the backend with PyInstaller, and creates an NSIS installer at:
 
 ```text
 desktop/dist/PrimePick-Goods-Setup-0.1.0.exe

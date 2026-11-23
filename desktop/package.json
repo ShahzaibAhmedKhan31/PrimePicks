@@ -4,6 +4,7 @@
   "private": true,
   "description": "PrimePick Goods Listing Generator desktop shell",
   "main": "main.cjs",
+  "packageManager": "traversal@1.0.0",
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win nsis --x64"
