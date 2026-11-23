@@ -56,7 +56,7 @@ Optional developer defaults are documented in `.env.example`. The OpenAI key sho
 
 ## Windows installer build
 
-The checked-in installer script targets **Windows x64**. Run it from a Windows build machine with Python 3.11+, Node.js 20+, npm, and PowerShell:
+The checked-in installer script targets **Windows x64**. Run it from a Windows build machine with Python 3.11+, Node.js 22.12+, npm, and PowerShell:
 
 ```powershell
 .\scripts\build_windows.ps1
@@ -69,6 +69,20 @@ desktop/dist/PrimePick-Goods-Setup-0.1.0.exe
 ```
 
 The installer bundles Chromium and may be large. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs and downloaded browsers are ignored by Git.
+
+## Run locally from Bash (without the Windows installer)
+
+If you do not have permission to run the Windows installer build, you can run the browser-based application from the cloned repository instead. This does **not** create an `.exe`; it sets up the Python backend and React UI on the client computer and serves them only on that computer.
+
+Prerequisites: Git/Bash, Python 3.11+, and Node.js 20+ with npm. On Windows, use Git Bash with the Windows Python and Node.js available on its `PATH`. On Ubuntu/WSL, use Linux Python and Node.js; WSLg or another desktop display is needed because product extraction opens a visible Chromium window.
+
+```bash
+git clone https://github.com/ShahzaibAhmedKhan31/PrimePicks.git
+cd PrimePicks
+bash scripts/run_local.sh
+```
+
+On first run the script creates a local Python environment, installs the Python and npm dependencies, downloads Playwright Chromium, builds the UI, and starts the app at `http://127.0.0.1:8765`. Keep the terminal open while using the app; press **Ctrl+C** to stop it. The server is bound to loopback and is not exposed to other computers on the network. Enter the client's own OpenAI API key under **Settings**; it is never included in the repository. Internet access is required for the initial dependency downloads and for AliExpress/OpenAI features.
 
 ## Tests
 
