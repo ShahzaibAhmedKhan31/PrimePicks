@@ -1,11 +1,25 @@
 # PrimePick Goods — Quick Start
 
-## First launch
+## First launch (Windows installer)
 
 1. Install PrimePick Goods Listing Generator using the Windows setup file and open it from the desktop shortcut or Start menu.
 2. Choose **Settings** in the left navigation.
 3. Enter your own OpenAI API key, confirm the model setting, and select **Save settings**. The saved key is hidden in the app and stored for your Windows user.
 4. Choose **New listing**.
+
+## Run from the repository with Bash (instead of installing the Windows app)
+
+This option runs the application locally from source in a browser. It does not create or install an `.exe`.
+
+Requirements: Git and Bash, Python 3.11+, and Node.js 20+ with npm. On Windows, run the script in **Git Bash** and make sure Windows Python and Node.js are on its `PATH`. On Ubuntu/WSL, use Linux Python and Node.js; WSLg or another graphical display is required for the visible Chromium product browser.
+
+```bash
+git clone https://github.com/ShahzaibAhmedKhan31/PrimePicks.git
+cd PrimePicks
+bash scripts/run_local.sh
+```
+
+The first run installs dependencies and Playwright Chromium, builds the interface, and starts the local server at `http://127.0.0.1:8765`. Keep the terminal open while using the app; press **Ctrl+C** to stop it. The app is only reachable from the same computer. In **Settings**, enter the client's own OpenAI API key; it is not in the repository. Initial setup requires internet access.
 
 ## Create a listing
 
