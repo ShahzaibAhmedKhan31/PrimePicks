@@ -1,25 +1,25 @@
 # PrimePick Goods — AI eBay Listing Generator
 
-PrimePick Goods is a local-first desktop application for turning an AliExpress product page into an editable, fact-led eBay US listing. It combines a visible Microsoft Edge window (so the seller can complete verification manually), a modular Python extractor, OpenAI structured JSON output, a Jinja2-branded HTML template, and local SQLite history.
+PrimePick Goods is a local-first desktop application for turning an AliExpress product page into an editable, fact-led eBay US listing. It combines a built-in browser panel (where the seller opens the product and completes any verification by hand), a modular Python extractor, OpenAI structured JSON output, a Jinja2-branded HTML template, and local SQLite history.
 
 > **Repository note:** the starting repository contained only a README. There was no AliExpress scraper or client HTML template to inspect or reuse. This implementation therefore adds a conservative DOM-based extractor and a new PRIMEPICK GOODS starter template. If the client has the original store template, replace `backend/app/templates/listing.html` while keeping its dynamic fields; the template remains independent from AI prompts and extraction logic.
 
 ## What is included
 
 - **Dashboard:** paste an AliExpress URL and watch clear extraction progress.
-- **Visible verification:** Microsoft Edge opens on the user's desktop. If a human check appears, the app waits while the user completes it and presses **Continue**. There is no CAPTCHA bypass, stealth mode, or access-restriction workaround.
+- **Built-in product browser:** in the desktop app, AliExpress opens in a normal browser panel inside the app window (an Electron `WebContentsView` with no automation or debugging protocol attached). The user completes any AliExpress check by hand, then selects **Extract this product**; the app reads the page they are viewing and sends the HTML to the backend parser. There is no CAPTCHA bypass, stealth mode, or access-restriction workaround. When the UI runs in a plain browser (developer mode), extraction falls back to a Playwright-driven Edge window.
 - **Product review:** edit the extracted title and description, inspect specifications/variations/package details, and select product images.
 - **AI content editor:** generate and edit an 80-character eBay title, description, features, specifications, package contents, instructions, warnings, and private review flags.
 - **Branded HTML:** Jinja2 builds a script-free, table-based PRIMEPICK GOODS listing with inline styling. It is rendered in a sandboxed iframe; source view, copy, and HTML download are provided.
 - **History, settings, and OpenAI usage:** listings, token totals, and estimated USD usage persist in local SQLite. Settings shows all-time input/output tokens, generations, and estimated spend; the OpenAI key is not returned to the UI and is stored in the OS credential vault when available (encrypted local fallback otherwise).
-- **Windows desktop packaging:** Electron starts and shuts down a bundled FastAPI backend. The Windows build bundles the frontend and Python backend in an NSIS installer with desktop/start-menu shortcuts. No browser is bundled: extraction drives the Microsoft Edge that ships with Windows (falling back to Google Chrome).
+- **Windows desktop packaging:** Electron starts and shuts down a bundled FastAPI backend. The Windows build bundles the frontend and Python backend in an NSIS installer with desktop/start-menu shortcuts. No browser or Playwright is bundled: product pages open in the app's own browser panel.
 
 ## End-user workflow
 
 1. Install and open **PrimePick Goods Listing Generator**.
 2. Open **Settings**, paste an OpenAI API key, and save it. The app does not include or supply an API key.
-3. Paste one public AliExpress product URL and select **Extract product**.
-4. If Edge displays a CAPTCHA, robot check, or "unusual network activity" screen, complete it yourself in that visible window and select **Continue** in the app. If the product page cannot be read, the app will explain that and will not silently create a listing.
+3. Paste one public AliExpress product URL and select **Open product**.
+4. The page opens in the app's browser panel. If AliExpress shows a robot check, complete it yourself in the panel, then select **Extract this product**. If the product page cannot be read, the app will explain that and will not silently create a listing.
 5. Review the extracted facts and choose the images to use.
 6. Generate the copy, review the private seller notes, edit the fields, and preview the branded HTML.
 7. Copy the complete source, download an `.html` file, and/or save the listing to local history.
@@ -50,7 +50,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite address it prints (normally `http://localhost:5173`). Vite proxies `/api` requests to the local backend on port `8765`. The visible Edge (or Chrome/Chromium) window is launched by the Python backend on the same computer.
+Open the Vite address it prints (normally `http://localhost:5173`). Vite proxies `/api` requests to the local backend on port `8765`. In a plain browser there is no built-in panel, so extraction uses the fallback: the Python backend launches a visible Edge (or Chrome/Chromium) window via Playwright on the same computer. Running the desktop shell against the dev backend (`cd desktop && npx electron .`) uses the built-in panel.
 
 Optional developer defaults are documented in `.env.example`. The OpenAI key should be entered through the app's Settings page, not committed to a file or source control.
 
@@ -77,10 +77,10 @@ Upload `desktop/dist/PrimePick-Goods-Setup-<version>.exe` to a **GitHub Release*
 Both scripts build the React UI, install backend build dependencies, package the backend with PyInstaller, and creates an NSIS installer at:
 
 ```text
-desktop/dist/PrimePick-Goods-Setup-0.1.1.exe
+desktop/dist/PrimePick-Goods-Setup-0.1.2.exe
 ```
 
-No browser is bundled (the app uses the installed Microsoft Edge), which keeps the installer around 175 MB. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs and downloaded browsers are ignored by Git.
+No browser or Playwright is bundled (product pages open in the app's own Electron browser panel), which keeps the installer around 145 MB. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs and downloaded browsers are ignored by Git.
 
 ## Tests
 

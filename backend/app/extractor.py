@@ -593,6 +593,35 @@ async def page_needs_manual_verification(page: Any) -> bool:
     return False
 
 
+def _parse_loaded_product(html: str, page_url: str) -> ProductData:
+    product = parse_product_html(html, page_url)
+    if not product.title.strip() and not product.images:
+        raise ExtractionError(
+            "The product page did not load fully (no title or images were found). "
+            "If AliExpress showed a verification or warning, complete it in the browser window and try again."
+        )
+    return product
+
+
+def extract_product_from_html(page_url: str, html: str) -> ProductData:
+    """Extract a product from a page the user opened and loaded themselves.
+
+    Used by the desktop app's built-in browser panel: the user browses to the product
+    and completes any AliExpress check by hand, then the app sends the page HTML here.
+    """
+    page_url = validate_aliexpress_url(page_url)
+    if looks_like_verification(page_url, html):
+        raise ExtractionError(
+            "AliExpress is still showing a verification or warning page. "
+            "Complete it in the browser panel, wait for the product page to appear, then click Extract this product."
+        )
+    if not re.search(r"/(?:item|i)/\d+", urlsplit(page_url).path):
+        raise ExtractionError(
+            "This doesn't look like a product page. Open a single AliExpress product, then click Extract this product."
+        )
+    return _parse_loaded_product(html, page_url)
+
+
 # Prefer the browsers already installed on Windows (Edge ships with Windows 10/11).
 # A regular Edge/Chrome build is challenged less often by AliExpress than Playwright's
 # test Chromium, and it means the installer does not need to bundle a browser.
@@ -684,13 +713,7 @@ async def extract_product(
                     raise ExtractionError(
                         "AliExpress is still showing a verification page. Complete it in the browser window, then try again."
                     )
-                html = await page.content()
-                product = parse_product_html(html, page.url)
-                if not product.title.strip() and not product.images:
-                    raise ExtractionError(
-                        "The product page did not load fully (no title or images were found). "
-                        "If AliExpress showed a verification or warning, complete it in the browser window and try again."
-                    )
+                product = _parse_loaded_product(await page.content(), page.url)
                 await report("completed", "Product information extracted. Review the details before generating copy.")
                 return product
             finally:

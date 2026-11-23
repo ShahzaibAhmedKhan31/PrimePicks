@@ -112,6 +112,13 @@ class ExtractionStartRequest(BaseModel):
     url: Annotated[str, Field(min_length=8, max_length=4_000)]
 
 
+class HtmlExtractionRequest(BaseModel):
+    """A product page the user loaded in the desktop app's built-in browser panel."""
+
+    url: Annotated[str, Field(min_length=8, max_length=4_000)]
+    html: Annotated[str, Field(min_length=1, max_length=25_000_000)]
+
+
 class GenerateRequest(BaseModel):
     product: ProductData
 

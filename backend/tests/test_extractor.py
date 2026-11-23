@@ -159,3 +159,47 @@ def test_only_aliexpress_urls_are_allowed():
         assert "AliExpress" in str(error)
     else:
         raise AssertionError("A non-AliExpress URL should be rejected")
+
+
+_LAMP_PAGE = """
+<html><head><meta property="og:title" content="Portable Reading Lamp">
+<meta property="og:image" content="https://ae01.alicdn.com/kf/lamp.jpg"></head>
+<body><h1>Portable Reading Lamp</h1><div id="product-description"><p>Adjustable brightness.</p></div></body></html>
+"""
+
+
+def test_html_from_built_in_browser_is_extracted():
+    from app.extractor import extract_product_from_html
+
+    product = extract_product_from_html("https://www.aliexpress.com/item/1005001234567890.html?spm=a2g0o", _LAMP_PAGE)
+    assert product.title == "Portable Reading Lamp"
+    assert product.images
+
+
+def test_html_extraction_rejects_verification_page():
+    import pytest
+    from app.extractor import extract_product_from_html
+
+    with pytest.raises(ExtractionError, match="verification"):
+        extract_product_from_html(
+            "https://www.aliexpress.com/item/1005001234567890.html",
+            "<div>We have detected unusual traffic from your network, please try again later.</div>",
+        )
+
+
+def test_html_extraction_rejects_non_product_and_non_aliexpress_pages():
+    import pytest
+    from app.extractor import extract_product_from_html
+
+    with pytest.raises(ExtractionError, match="product page"):
+        extract_product_from_html("https://www.aliexpress.com/category/100003109/women-clothing.html", _LAMP_PAGE)
+    with pytest.raises(ExtractionError):
+        extract_product_from_html("https://example.com/item/123.html", _LAMP_PAGE)
+
+
+def test_html_extraction_rejects_an_empty_page():
+    import pytest
+    from app.extractor import extract_product_from_html
+
+    with pytest.raises(ExtractionError, match="did not load fully"):
+        extract_product_from_html("https://www.aliexpress.com/item/1005001234567890.html", "<html><body></body></html>")

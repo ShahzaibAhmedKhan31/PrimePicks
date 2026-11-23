@@ -20,8 +20,8 @@ To uninstall, open Windows **Settings → Apps**, find PrimePick Goods Listing G
 
 ## Create a listing
 
-1. Paste a public AliExpress product URL and select **Extract product**.
-2. A Microsoft Edge window opens on the product page. If AliExpress asks you to verify that you are human, or says it has detected unusual or inappropriate network activity, complete the check in that Edge window. Return to the app and press **Continue**. Keep the Edge window open until extraction finishes. PrimePick Goods does not solve or bypass the challenge.
+1. Paste a public AliExpress product URL and select **Open product**.
+2. The product page opens in a browser panel inside the app. Use it like a normal browser: if AliExpress asks you to verify that you are not a robot, complete the check in the panel. When the product page is showing, select **Extract this product**. PrimePick Goods does not solve or bypass the check; you complete it yourself.
 3. Review the title, description, specifications, variations, package details, warnings, and image choices. The extractor prefers the page's Open Graph title and a complete item AI overview when available; otherwise it uses metadata description and other page fallbacks. Confirm important information on the source page.
 4. Select **Generate eBay copy**. OpenAI creates a structured draft; the app displays any missing or uncertain facts as private seller review notes.
 5. Edit the title and listing fields as needed. Review product compatibility and safety details before publishing.

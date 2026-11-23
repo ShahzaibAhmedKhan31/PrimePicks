@@ -53,8 +53,8 @@ try {
         --paths (Join-Path $Root 'backend') `
         --add-data "$(Join-Path $Root 'backend/app/templates');app/templates" `
         --add-data "$(Join-Path $Root 'frontend_dist');frontend_dist" `
-        --collect-all playwright `
-        --collect-all greenlet `
+        --exclude-module playwright `
+        --exclude-module greenlet `
         --collect-all fastapi `
         --collect-all starlette `
         --collect-all pydantic `

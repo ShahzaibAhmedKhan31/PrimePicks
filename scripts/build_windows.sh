@@ -65,7 +65,7 @@ say "Packaging Python backend"
 rm -rf "$BACKEND_OUT"
 mkdir -p "$BACKEND_OUT"
 COLLECT=()
-for pkg in playwright greenlet fastapi starlette pydantic uvicorn anyio openai bs4 jinja2 platformdirs cryptography keyring; do
+for pkg in fastapi starlette pydantic uvicorn anyio openai bs4 jinja2 platformdirs cryptography keyring; do
   COLLECT+=(--collect-all "$pkg")
 done
 "$VENV_PY" -m PyInstaller \
@@ -78,6 +78,7 @@ done
   --add-data "$(win "$ROOT/backend/app/templates");app/templates" \
   --add-data "$(win "$ROOT/frontend_dist");frontend_dist" \
   "${COLLECT[@]}" \
+  --exclude-module playwright --exclude-module greenlet \
   "$(win "$ROOT/backend/run_backend.py")" \
   || fail "PyInstaller could not package the Python backend."
 

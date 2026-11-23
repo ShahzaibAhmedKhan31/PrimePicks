@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require('electron');
+const { app, BrowserWindow, WebContentsView, dialog, ipcMain, session, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -130,8 +130,156 @@ function createWindow(port) {
     if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
     return { action: 'deny' };
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => {
+    if (productView && !productView.webContents.isDestroyed()) productView.webContents.close();
+    productView = null;
+    mainWindow = null;
+  });
   mainWindow.loadURL(`http://127.0.0.1:${port}`).then(() => mainWindow && mainWindow.show());
+}
+
+// ---------------------------------------------------------------------------
+// Built-in product browser
+//
+// AliExpress opens in a normal browser panel inside the app window. The user
+// browses and completes any AliExpress check by hand; no automation/debugging
+// protocol is attached. When the user clicks "Extract this product", the app
+// reads the page they are looking at and sends it to the local backend.
+// ---------------------------------------------------------------------------
+const PRODUCT_BROWSER_PARTITION = 'persist:product-browser';
+let productView = null;
+
+function isAliExpressUrl(value) {
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    return ['http:', 'https:'].includes(parsed.protocol)
+      && !parsed.username && !parsed.password
+      && (['aliexpress.com', 'aliexpress.us'].includes(host) || host.endsWith('.aliexpress.com') || host.endsWith('.aliexpress.us'));
+  } catch {
+    return false;
+  }
+}
+
+function isWebUrl(value) {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeBounds(bounds) {
+  const number = (value) => (Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
+  return { x: number(bounds?.x), y: number(bounds?.y), width: number(bounds?.width), height: number(bounds?.height) };
+}
+
+function sendProductBrowserState() {
+  if (!mainWindow || mainWindow.isDestroyed() || !productView) return;
+  const contents = productView.webContents;
+  mainWindow.webContents.send('product-browser:state', {
+    url: contents.getURL(),
+    title: contents.getTitle(),
+    loading: contents.isLoading(),
+    canGoBack: contents.navigationHistory.canGoBack(),
+  });
+}
+
+function configureProductBrowserSession() {
+  const browserSession = session.fromPartition(PRODUCT_BROWSER_PARTITION);
+  // Present the standard Chromium user agent for site compatibility (Electron's
+  // default adds app/Electron tokens that some sites do not recognise).
+  browserSession.setUserAgent(
+    `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`,
+  );
+  // The panel is only for reading product pages: no camera, location, notifications, etc.
+  browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  browserSession.on('will-download', (event) => event.preventDefault());
+}
+
+function createProductView() {
+  const view = new WebContentsView({
+    webPreferences: {
+      partition: PRODUCT_BROWSER_PARTITION,
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+    },
+  });
+  const contents = view.webContents;
+  contents.setWindowOpenHandler(({ url }) => {
+    // Keep AliExpress links (e.g. "open in new tab") inside the panel.
+    if (isWebUrl(url)) contents.loadURL(url);
+    return { action: 'deny' };
+  });
+  contents.on('will-navigate', (event, url) => {
+    if (!isWebUrl(url)) event.preventDefault();
+  });
+  for (const eventName of ['did-start-loading', 'did-stop-loading', 'did-navigate', 'did-navigate-in-page', 'page-title-updated']) {
+    contents.on(eventName, sendProductBrowserState);
+  }
+  return view;
+}
+
+function closeProductView() {
+  if (!productView) return;
+  const view = productView;
+  productView = null;
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.contentView.removeChildView(view);
+  if (!view.webContents.isDestroyed()) view.webContents.close();
+}
+
+function registerProductBrowserIpc() {
+  const fromMainWindow = (event) => mainWindow && !mainWindow.isDestroyed() && event.sender === mainWindow.webContents;
+
+  ipcMain.handle('product-browser:open', async (event, payload) => {
+    if (!fromMainWindow(event)) throw new Error('Not allowed.');
+    const url = String(payload?.url || '').trim();
+    if (!isAliExpressUrl(url)) throw new Error('Please enter a product URL from AliExpress.');
+    if (!productView) {
+      productView = createProductView();
+      mainWindow.contentView.addChildView(productView);
+    }
+    productView.setBounds(sanitizeBounds(payload?.bounds));
+    productView.setVisible(true);
+    productView.webContents.loadURL(url).catch(() => sendProductBrowserState());
+    return true;
+  });
+
+  ipcMain.handle('product-browser:show', (event, payload) => {
+    if (!fromMainWindow(event) || !productView) return false;
+    productView.setBounds(sanitizeBounds(payload?.bounds));
+    productView.setVisible(Boolean(payload?.visible ?? true));
+    return true;
+  });
+
+  ipcMain.handle('product-browser:navigate', (event, action) => {
+    if (!fromMainWindow(event) || !productView) return false;
+    const contents = productView.webContents;
+    if (action === 'back' && contents.navigationHistory.canGoBack()) contents.navigationHistory.goBack();
+    if (action === 'reload') contents.reload();
+    return true;
+  });
+
+  ipcMain.handle('product-browser:get-page', async (event) => {
+    if (!fromMainWindow(event) || !productView) throw new Error('The product browser is not open.');
+    const contents = productView.webContents;
+    // webContents.executeJavaScript waits until the page stops loading, and AliExpress pages
+    // keep loading trackers for a long time. Read the main frame directly, with a timeout.
+    const read = contents.mainFrame.executeJavaScript('document.documentElement.outerHTML');
+    const timeout = new Promise((_, reject) => setTimeout(
+      () => reject(new Error('The page took too long to respond. Wait for the product to appear, then try again.')),
+      15000,
+    ));
+    const html = await Promise.race([read, timeout]);
+    return { url: contents.getURL(), html: String(html || '') };
+  });
+
+  ipcMain.handle('product-browser:close', (event) => {
+    if (!fromMainWindow(event)) return false;
+    closeProductView();
+    return true;
+  });
 }
 
 function waitForBackendExit(timeoutMs = 8000) {
@@ -178,6 +326,8 @@ function requestBackendShutdown() {
 
 app.whenReady().then(async () => {
   try {
+    configureProductBrowserSession();
+    registerProductBrowserIpc();
     backendPort = await findFreePort();
     shutdownToken = crypto.randomBytes(32).toString('hex');
     launchBackend(backendPort);

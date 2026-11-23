@@ -520,3 +520,13 @@ h1, h2 { font-family: Manrope, 'DM Sans', sans-serif; color: var(--ink); }
   .connection-tag { padding: 4px 5px; font-size: 6px; }
   .toast { right: 12px; bottom: 74px; }
 }
+
+/* Built-in AliExpress browser panel (desktop app). The page itself is a native view
+   that Electron positions over .product-browser-viewport. */
+.product-browser-card { margin-top: 15px; padding: 10px; background: #fff; border: 1px solid #e4eaf0; border-radius: 11px; box-shadow: 0 5px 18px rgba(38,58,77,.035); }
+.product-browser-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.product-browser-address { display: flex; align-items: center; gap: 7px; flex: 1 1 220px; min-width: 0; height: 33px; padding: 0 11px; color: #4d5f71; background: #f5f7f9; border: 1px solid #e6ebf0; border-radius: 6px; font-size: 11px; }
+.product-browser-address span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.product-browser-hint { display: flex; align-items: center; gap: 7px; margin: 9px 2px; color: #987324; font-size: 10.5px; line-height: 1.5; }
+.product-browser-hint svg { flex: 0 0 auto; color: #bd8120; }
+.product-browser-viewport { display: grid; place-items: center; height: max(460px, calc(100vh - 300px)); color: #8a97a4; background: #f7f9fb; border: 1px solid #e6ebf0; border-radius: 8px; font-size: 11.5px; }

@@ -29,6 +29,91 @@ import {
 } from 'lucide-react';
 
 const API_BASE = '/api';
+// Present only inside the desktop app (see desktop/preload.cjs). In a plain browser the
+// app falls back to the backend-driven Edge extraction.
+const productBrowser = typeof window !== 'undefined' ? window.primepickDesktop?.productBrowser || null : null;
+
+function visibleBounds(element) {
+  const rect = element.getBoundingClientRect();
+  const top = Math.max(rect.top, 0);
+  const bottom = Math.min(rect.bottom, window.innerHeight);
+  const height = Math.max(0, bottom - top);
+  return { x: rect.left, y: top, width: rect.width, height };
+}
+
+function ProductBrowserPanel({ url, nonce, openedNonceRef, onExtracted, onClose, onError }) {
+  const viewportRef = useRef(null);
+  const [state, setState] = useState({ url, title: '', loading: true, canGoBack: false });
+  const [extracting, setExtracting] = useState(false);
+
+  // Open (or re-show) the native browser panel over the placeholder.
+  useEffect(() => {
+    const element = viewportRef.current;
+    if (!element) return;
+    const bounds = visibleBounds(element);
+    if (openedNonceRef.current === nonce) {
+      productBrowser.show(bounds, bounds.height > 40);
+      return;
+    }
+    openedNonceRef.current = nonce;
+    setState({ url, title: '', loading: true, canGoBack: false });
+    productBrowser.open(url, bounds).catch((openError) => onError(openError.message || 'The product page could not be opened.'));
+  }, [url, nonce, openedNonceRef, onError]);
+
+  // Keep the native panel aligned with the placeholder as the layout changes; hide it when leaving.
+  useEffect(() => {
+    const unsubscribe = productBrowser.onState((next) => setState(next));
+    let frame = 0;
+    let last = '';
+    const sync = () => {
+      const element = viewportRef.current;
+      if (element) {
+        const bounds = visibleBounds(element);
+        const key = `${Math.round(bounds.x)},${Math.round(bounds.y)},${Math.round(bounds.width)},${Math.round(bounds.height)}`;
+        if (key !== last) {
+          last = key;
+          productBrowser.show(bounds, bounds.height > 40);
+        }
+      }
+      frame = window.requestAnimationFrame(sync);
+    };
+    frame = window.requestAnimationFrame(sync);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      unsubscribe();
+      productBrowser.show({ x: 0, y: 0, width: 0, height: 0 }, false);
+    };
+  }, []);
+
+  const extract = async () => {
+    setExtracting(true);
+    try {
+      const page = await productBrowser.getPage();
+      const result = await api('/extractions/html', { method: 'POST', body: JSON.stringify(page) });
+      onExtracted(result.product);
+    } catch (extractError) {
+      onError(extractError.message || 'This page could not be read. Make sure the product page is fully shown, then try again.');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  return (
+    <section className="product-browser-card" aria-label="AliExpress product browser">
+      <div className="product-browser-toolbar">
+        <button className="icon-button muted-icon" onClick={() => productBrowser.back()} disabled={!state.canGoBack} type="button" aria-label="Back" title="Back"><ArrowLeft size={16} /></button>
+        <button className="icon-button muted-icon" onClick={() => productBrowser.reload()} type="button" aria-label="Reload" title="Reload"><RefreshCw className={state.loading ? 'spin' : ''} size={15} /></button>
+        <div className="product-browser-address" title={state.url}>{state.loading && <Loader2 className="spin" size={13} />}<span>{state.title || state.url || url}</span></div>
+        <button className="button button-primary button-small" onClick={extract} disabled={extracting} type="button">
+          {extracting ? <Loader2 className="spin" size={15} /> : <WandSparkles size={15} />} {extracting ? 'Reading page…' : 'Extract this product'}
+        </button>
+        <button className="button button-quiet button-small" onClick={onClose} disabled={extracting} type="button"><X size={15} /> Close</button>
+      </div>
+      <p className="product-browser-hint"><ShieldCheck size={14} /> If AliExpress asks you to verify, complete it in the page below. When the product page is showing, click <strong>Extract this product</strong>.</p>
+      <div className="product-browser-viewport" ref={viewportRef}><span>Loading AliExpress…</span></div>
+    </section>
+  );
+}
 
 async function api(path, options = {}) {
   let response;
@@ -181,6 +266,8 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [backendOnline, setBackendOnline] = useState(true);
   const [savedListingId, setSavedListingId] = useState(null);
+  const [browserSession, setBrowserSession] = useState(null);
+  const openedBrowserNonce = useRef(null);
   const toastTimer = useRef(null);
   const inputRef = useRef(null);
 
@@ -284,6 +371,12 @@ function App() {
     setJob(null);
     setPage('workspace');
     setTab('product');
+    if (productBrowser) {
+      // Desktop app: open the product in the built-in browser panel; the user extracts from there.
+      setBusy('');
+      setBrowserSession((current) => ({ url: url.trim(), nonce: (current?.nonce || 0) + 1 }));
+      return;
+    }
     try {
       const result = await api('/extractions', { method: 'POST', body: JSON.stringify({ url: url.trim() }) });
       setJob(result);
@@ -313,6 +406,25 @@ function App() {
     setJob((current) => current ? { ...current, status: 'cancelled', message: 'Extraction stopped.' } : current);
     setBusy('');
   };
+
+  const closeProductBrowser = useCallback(() => {
+    productBrowser?.close();
+    openedBrowserNonce.current = null;
+    setBrowserSession(null);
+  }, []);
+
+  const handleBrowserExtracted = useCallback((extracted) => {
+    closeProductBrowser();
+    setError('');
+    setProduct(extracted);
+    setContent(null);
+    setHtml('');
+    setSavedListingId(null);
+    setTab('product');
+    notify('Product details are ready to review.');
+  }, [closeProductBrowser, notify]);
+
+  const handleBrowserError = useCallback((message) => setError(message), []);
 
   const updateProduct = (key, value) => {
     setProduct((current) => current ? { ...current, [key]: value } : current);
@@ -519,7 +631,7 @@ function App() {
               <div className="url-card-icon"><LinkIcon /></div>
               <div className="url-card-copy">
                 <label htmlFor="product-url">AliExpress product URL</label>
-                <p>Paste a public product link. Microsoft Edge will open so you can complete any verification yourself.</p>
+                <p>{productBrowser ? 'Paste a public product link. The page opens below, where you can complete any AliExpress check yourself.' : 'Paste a public product link. Microsoft Edge will open so you can complete any verification yourself.'}</p>
               </div>
               <form className="url-form" onSubmit={startExtraction}>
                 <div className="url-input-wrap">
@@ -529,11 +641,22 @@ function App() {
                 </div>
                 <button className="button button-primary extract-button" disabled={busy === 'extracting'} type="submit">
                   {busy === 'extracting' ? <Loader2 className="spin" size={17} /> : <WandSparkles size={17} />}
-                  {busy === 'extracting' ? 'Working…' : 'Extract product'}
+                  {busy === 'extracting' ? 'Working…' : (productBrowser ? 'Open product' : 'Extract product')}
                 </button>
               </form>
               <div className="url-card-footer"><ShieldCheck size={15} /><span>No CAPTCHA bypass. Verification is completed manually in the visible browser.</span><span className="footer-separator">·</span><span>Product facts are checked before publishing.</span></div>
             </section>
+
+            {productBrowser && browserSession && (
+              <ProductBrowserPanel
+                url={browserSession.url}
+                nonce={browserSession.nonce}
+                openedNonceRef={openedBrowserNonce}
+                onExtracted={handleBrowserExtracted}
+                onClose={closeProductBrowser}
+                onError={handleBrowserError}
+              />
+            )}
 
             {job && ['opening', 'waiting', 'verification_required', 'extracting'].includes(job.status) && (
               <section className={`progress-card ${job.status === 'verification_required' ? 'verification-card' : ''}`} aria-live="polite">
