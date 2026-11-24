@@ -26,3 +26,4 @@ desktop/resources/playwright-browsers/
 *.sqlite3-wal
 .venv-build/
 .venv-windows/
+.venv-*/

@@ -26,6 +26,17 @@ PrimePick Goods is a local-first desktop application for turning an AliExpress p
 
 Internet access is needed to open AliExpress and call OpenAI. OpenAI usage is billed to the user's own OpenAI account according to that account's terms and pricing. The Settings page also shows locally stored token counts and an estimated USD total; built-in rates may differ from actual invoices, and unknown models are counted but not priced.
 
+## Run locally with one command
+
+`start.sh` at the repository root sets everything up and starts the app. It is safe to run every time: the first run creates `.venv-<platform>/`, installs the Python and npm packages (including Electron) and builds the interface; later runs skip whatever has not changed and open the app in a few seconds.
+
+```bash
+bash start.sh          # desktop app window with the built-in product browser (recommended)
+bash start.sh --web    # browser mode at http://127.0.0.1:8765 (PRIMEPICK_PORT to change)
+```
+
+Requirements: Python 3.11+, Node.js 20+ and Bash (Git Bash on Windows). No PowerShell is needed. Python packages are reinstalled only when `backend/requirements.txt` changes, npm packages only when a `package-lock.json` changes, and the interface is rebuilt only when `src/`, `index.html`, `vite.config.js` or `package.json` change. Settings and listings are stored in the same per-user folder as the installed app.
+
 ## Run in developer mode
 
 Prerequisites: Python 3.11+, Node.js 22.12+ for the desktop shell/Windows installer (Node.js 20+ is sufficient for the React-only dev server), npm, and Microsoft Edge or Google Chrome (or Playwright Chromium via `python -m playwright install chromium`). These are developer requirements only; the packaged Windows user does not install Python or Node.js.

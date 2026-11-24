@@ -11,6 +11,17 @@ You don't need to install Python, Node.js, a browser, or anything else. Everythi
 
 To uninstall, open Windows **Settings → Apps**, find PrimePick Goods Listing Generator, and select **Uninstall**.
 
+## Or: run it from the project folder
+
+Use this if you were given the project folder (or downloaded it from GitHub as a ZIP) instead of the setup file. You need **Python 3.11 or newer**, **Node.js 20 or newer**, and **Git for Windows** (which provides Git Bash) installed.
+
+1. Open the project folder.
+2. Double-click **start.sh**. If Windows asks which program to use, choose **Git Bash**. (Or: right-click inside the folder, choose **Open Git Bash here**, type `bash start.sh` and press Enter.)
+3. The first time, it downloads and prepares everything it needs. This can take several minutes. After that, it starts in a few seconds.
+4. The app window opens. Keep the black Git Bash window open while you use the app; closing the app window stops everything.
+
+Run **start.sh** the same way every time you want to use the app. If something goes wrong, the Git Bash window stays open and explains the problem.
+
 ## First launch
 
 1. Open PrimePick Goods Listing Generator from the desktop shortcut or the Start menu.
