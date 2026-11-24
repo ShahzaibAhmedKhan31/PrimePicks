@@ -28,14 +28,19 @@ Internet access is needed to open AliExpress and call OpenAI. OpenAI usage is bi
 
 ## Run locally with one command
 
-`start.sh` at the repository root sets everything up and starts the app. It is safe to run every time: the first run creates `.venv-<platform>/`, installs the Python and npm packages (including Electron) and builds the interface; later runs skip whatever has not changed and open the app in a few seconds.
+Two launchers at the repository root set everything up and start the app: `start.cmd` for Windows (double-click it, or run it from Command Prompt) and `start.sh` for Git Bash, macOS and Linux. They do the same thing and share the same setup, so you can use either one. Both are safe to run every time. The first run creates `.venv-<platform>/`, installs the Python and npm packages (including Electron) and builds the interface. Later runs skip whatever hasn't changed and open the app in a few seconds.
 
-```bash
-bash start.sh          # desktop app window with the built-in product browser (recommended)
-bash start.sh --web    # browser mode at http://127.0.0.1:8765 (PRIMEPICK_PORT to change)
+```bat
+start.cmd              :: Windows: desktop app window with the built-in product browser (recommended)
+start.cmd --web        :: browser mode at http://127.0.0.1:8765 (set PRIMEPICK_PORT to change)
 ```
 
-Requirements: Python 3.11+, Node.js 20+ and Bash (Git Bash on Windows). No PowerShell is needed. Python packages are reinstalled only when `backend/requirements.txt` changes, npm packages only when a `package-lock.json` changes, and the interface is rebuilt only when `src/`, `index.html`, `vite.config.js` or `package.json` change. Settings and listings are stored in the same per-user folder as the installed app.
+```bash
+bash start.sh          # same, from Git Bash / macOS / Linux
+bash start.sh --web
+```
+
+Requirements: Python 3.11+ and Node.js 20+. `start.cmd` needs nothing else (no Git Bash or PowerShell). `start.sh` needs Bash. Python packages are reinstalled only when `backend/requirements.txt` changes, npm packages only when a `package-lock.json` changes, and the interface is rebuilt only when `src/`, `index.html`, `vite.config.js` or `package.json` change. Settings and listings are stored in the same per-user folder as the installed app.
 
 ## Run in developer mode
 
@@ -134,7 +139,8 @@ src/                    React workflow, product browser panel, editor, history, 
 desktop/                Electron lifecycle, built-in product browser, preload and NSIS installer settings
 scripts/                Windows installer build scripts (Git Bash and PowerShell)
 docs/                   Architecture notes and the end-user guide
-start.sh                One-command local setup and launch
+start.cmd / start.sh    One-command local setup and launch (Windows / Bash)
+scripts/start_helper.py Change detection used by start.cmd
 ```
 
 ## Important limitations and safety notes

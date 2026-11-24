@@ -24,7 +24,7 @@
 
 ## Local run script
 
-`start.sh` is the no-installer way to run the app on a machine that has Python 3.11+, Node.js 20+ and Bash (Git Bash on Windows). Each run:
+`start.cmd` (Windows Command Prompt) and `start.sh` (Bash) are the no-installer way to run the app on a machine that has Python 3.11+ and Node.js 20+. They do the same thing and share their markers, so a setup made by one is reused by the other. `start.cmd` uses `scripts/start_helper.py` for hashing and timestamp checks, which batch files can't do themselves. Each run:
 
 1. Checks Python and Node.js.
 2. Creates `.venv-<platform>/` if it doesn't exist.

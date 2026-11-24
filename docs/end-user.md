@@ -13,14 +13,14 @@ To uninstall, open Windows **Settings → Apps**, find PrimePick Goods Listing G
 
 ## Or: run it from the project folder
 
-Use this if you were given the project folder (or downloaded it from GitHub as a ZIP) instead of the setup file. You need **Python 3.11 or newer**, **Node.js 20 or newer**, and **Git for Windows** (which provides Git Bash) installed.
+Use this if you were given the project folder (or downloaded it from GitHub as a ZIP) instead of the setup file. You need **Python 3.11 or newer** (tick **Add python.exe to PATH** when installing it) and **Node.js 20 or newer** installed.
 
 1. Open the project folder.
-2. Double-click **start.sh**. If Windows asks which program to use, choose **Git Bash**. (Or: right-click inside the folder, choose **Open Git Bash here**, type `bash start.sh` and press Enter.)
+2. Double-click **start.cmd**. If Windows shows a security warning (common for files from a downloaded ZIP), select **Run**, or **More info** then **Run anyway**.
 3. The first time, it downloads and prepares everything it needs. This can take several minutes. After that, it starts in a few seconds.
-4. The app window opens. Keep the black Git Bash window open while you use the app; closing the app window stops everything.
+4. The app window opens. Keep the black command window open while you use the app; closing the app window stops everything.
 
-Run **start.sh** the same way every time you want to use the app. If something goes wrong, the Git Bash window stays open and explains the problem.
+Double-click **start.cmd** every time you want to use the app. If something goes wrong, the black window stays open and explains the problem. (If you use Git Bash, `bash start.sh` does the same thing.)
 
 ## First launch
 
