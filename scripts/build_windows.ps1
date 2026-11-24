@@ -3,7 +3,6 @@ $Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $PythonEnv = Join-Path $Root '.venv'
 $Python = Join-Path $PythonEnv 'Scripts/python.exe'
 $Desktop = Join-Path $Root 'desktop'
-$BrowserDir = Join-Path $Desktop 'resources/playwright-browsers'
 
 Write-Host '== PrimePick Goods Windows build ==' -ForegroundColor Cyan
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
@@ -36,9 +35,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Could not update pip in the Python build environment.' }
     & $Python -m pip install -r (Join-Path $Root 'backend/requirements-build.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Could not install the backend build requirements.' }
-
-    # No browser is bundled: the app drives the Microsoft Edge that ships with Windows.
-    if (Test-Path $BrowserDir) { Remove-Item -Recurse -Force $BrowserDir }
 
     $BackendResources = Join-Path $Desktop 'resources/backend'
     if (Test-Path $BackendResources) { Remove-Item -Recurse -Force $BackendResources }

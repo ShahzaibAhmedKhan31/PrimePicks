@@ -595,7 +595,7 @@ function App() {
         <div className="sidebar-bottom">
           <div className="local-badge"><span className={backendOnline ? 'online-dot' : 'offline-dot'} />{backendOnline ? 'Local workspace' : 'Service disconnected'}</div>
           <p>Your listings and settings stay on this computer.</p>
-          <div className="sidebar-version">PRIMEPICK GOODS <span>·</span> 0.1.0</div>
+          <div className="sidebar-version">PRIMEPICK GOODS <span>·</span> {__APP_VERSION__}</div>
         </div>
       </aside>
 

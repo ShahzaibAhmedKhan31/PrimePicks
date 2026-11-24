@@ -1,7 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('primepickDesktop', {
-  version: process.env.npm_package_version || '0.1.0',
   isDesktop: true,
   // Built-in AliExpress browser panel (see desktop/main.cjs).
   productBrowser: {

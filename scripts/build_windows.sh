@@ -8,7 +8,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESKTOP="$ROOT/desktop"
 VENV="$ROOT/.venv-build"
 VENV_PY="$VENV/Scripts/python.exe"
-BROWSER_DIR="$DESKTOP/resources/playwright-browsers"
 BACKEND_OUT="$DESKTOP/resources/backend"
 
 say()  { printf '\n\033[36m== %s ==\033[0m\n' "$*"; }
@@ -56,11 +55,7 @@ fi
 "$VENV_PY" -m pip install -r "$(win "$ROOT/backend/requirements-build.txt")" \
   || fail "Could not install the backend build requirements."
 
-# --- 3. Browser ---------------------------------------------------------------
-# No browser is bundled: the app drives the Microsoft Edge that ships with Windows.
-rm -rf "$BROWSER_DIR"
-
-# --- 4. Backend executable (PyInstaller) -------------------------------------
+# --- 3. Backend executable (PyInstaller) -------------------------------------
 say "Packaging Python backend"
 rm -rf "$BACKEND_OUT"
 mkdir -p "$BACKEND_OUT"
@@ -82,7 +77,7 @@ done
   "$(win "$ROOT/backend/run_backend.py")" \
   || fail "PyInstaller could not package the Python backend."
 
-# --- 5. Electron installer ---------------------------------------------------
+# --- 4. Electron installer ---------------------------------------------------
 say "Building Electron installer"
 cd "$DESKTOP"
 npm ci || fail "npm ci failed for the Electron desktop shell."
