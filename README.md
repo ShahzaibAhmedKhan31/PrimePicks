@@ -26,20 +26,39 @@ PrimePick Goods is a local-first desktop application for turning an AliExpress p
 
 Internet access is needed to open AliExpress and call OpenAI. OpenAI usage is billed to the user's own OpenAI account according to that account's terms and pricing. The Settings page also shows locally stored token counts and an estimated USD total; built-in rates may differ from actual invoices, and unknown models are counted but not priced.
 
+## Run locally with one command
+
+Two launchers at the repository root set everything up and start the app: `start.cmd` for Windows (double-click it, or run it from Command Prompt) and `start.sh` for Git Bash, macOS and Linux. They do the same thing and share the same setup, so you can use either one. Both are safe to run every time. The first run creates `.venv-<platform>/`, installs the Python and npm packages (including Electron) and builds the interface. Later runs skip whatever hasn't changed and open the app in a few seconds.
+
+```bat
+start.cmd              :: Windows: desktop app window with the built-in product browser (recommended)
+start.cmd --web        :: browser mode at http://127.0.0.1:8765 (set PRIMEPICK_PORT to change)
+```
+
+```bash
+bash start.sh          # same, from Git Bash / macOS / Linux
+bash start.sh --web
+```
+
+Requirements: Python 3.11+ and Node.js 20+. `start.cmd` needs nothing else (no Git Bash or PowerShell). `start.sh` needs Bash. Python packages are reinstalled only when `backend/requirements.txt` changes, npm packages only when a `package-lock.json` changes, and the interface is rebuilt only when `src/`, `index.html`, `vite.config.js` or `package.json` change. Settings and listings are stored in the same per-user folder as the installed app.
+
 ## Run in developer mode
 
-Prerequisites: Python 3.11+, Node.js 22.12+ for the desktop shell/Windows installer (Node.js 20+ is sufficient for the React-only dev server), npm, and Microsoft Edge or Google Chrome (or Playwright Chromium via `python -m playwright install chromium`). These are developer requirements only; the packaged Windows user does not install Python or Node.js.
+`bash start.sh` is the quickest way to get a working setup. To run the pieces separately with hot reload:
+
+Prerequisites: Python 3.11+, Node.js 20+ (22.12+ to build the Windows installer), npm, and Microsoft Edge or Google Chrome for the browser-mode extraction fallback. These are developer requirements only; users of the installer do not install Python or Node.js.
 
 ### 1. Python backend
 
 ```bash
 python -m venv .venv
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-# macOS/Linux:       source .venv/bin/activate
+# Windows (Git Bash): source .venv/Scripts/activate
+# macOS/Linux:        source .venv/bin/activate
 pip install -r backend/requirements.txt
-python -m playwright install chromium
-python backend/run_backend.py
+python backend/run_backend.py          # API on http://127.0.0.1:8765
 ```
+
+If neither Edge nor Chrome is installed, `python -m playwright install chromium` provides a fallback browser for browser-mode extraction.
 
 ### 2. React UI
 
@@ -50,9 +69,19 @@ npm install
 npm run dev
 ```
 
-Open the Vite address it prints (normally `http://localhost:5173`). Vite proxies `/api` requests to the local backend on port `8765`. In a plain browser there is no built-in panel, so extraction uses the fallback: the Python backend launches a visible Edge (or Chrome/Chromium) window via Playwright on the same computer. Running the desktop shell against the dev backend (`cd desktop && npx electron .`) uses the built-in panel.
+Open the Vite address it prints (normally `http://localhost:5173`). Vite proxies `/api` requests to the backend on port `8765`. A plain browser has no built-in product panel, so extraction uses the fallback: the backend opens a visible Edge (or Chrome/Chromium) window through Playwright, the user completes any check there and selects **Continue** in the app.
 
-Optional developer defaults are documented in `.env.example`. The OpenAI key should be entered through the app's Settings page, not committed to a file or source control.
+### 3. Desktop shell (optional)
+
+```bash
+cd desktop
+npm install
+npx electron .
+```
+
+Electron starts its own backend on a free port using `python` on Windows or `python3` elsewhere (set `PYTHON_EXECUTABLE` to choose an interpreter, e.g. your venv's Python) and uses the built-in product panel. If VS Code's terminal sets `ELECTRON_RUN_AS_NODE`, unset it first.
+
+Optional developer defaults are documented in `.env.example` (`OPENAI_MODEL`, `PRIMEPICK_DATA_DIR`). The OpenAI key should be entered through the app's Settings page, not committed to a file or source control.
 
 ## Windows installer build
 
@@ -74,13 +103,13 @@ The Bash script picks Python automatically. To use a specific interpreter, set i
 
 Upload `desktop/dist/PrimePick-Goods-Setup-<version>.exe` to a **GitHub Release** (Releases → Draft a new release → attach the file) or to Google Drive/OneDrive, and send the user the download link. Users only need [docs/end-user.md](docs/end-user.md).
 
-Both scripts build the React UI, install backend build dependencies, package the backend with PyInstaller, and creates an NSIS installer at:
+Both scripts build the React UI, install backend build dependencies into `.venv-build/` (`.venv` for the PowerShell script), package the backend with PyInstaller, and create an NSIS installer at:
 
 ```text
 desktop/dist/PrimePick-Goods-Setup-0.1.2.exe
 ```
 
-No browser or Playwright is bundled (product pages open in the app's own Electron browser panel), which keeps the installer around 145 MB. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs and downloaded browsers are ignored by Git.
+No browser or Playwright is bundled (product pages open in the app's own Electron browser panel), which keeps the installer around 145 MB. The end user's API key is deliberately **not** bundled. Windows code signing is not configured; Windows SmartScreen may show an unsigned-app warning until a publisher certificate is added. Build outputs are ignored by Git. To release a new version, bump `version` in both `package.json` and `desktop/package.json`; the installer name and the version shown in the app sidebar follow it.
 
 ## Tests
 
@@ -99,17 +128,19 @@ backend/app/
   ai_pricing.py         Built-in per-model USD pricing estimates
   config.py             Per-user data paths and packaged resource paths
   database.py           SQLite history, preferences, and usage totals
-  extractor.py          Visible Playwright browser and BeautifulSoup extraction
-  main.py               FastAPI routes and extraction job lifecycle
+  extractor.py          BeautifulSoup parsing of product HTML; Playwright fallback for browser mode
+  main.py               FastAPI routes, HTML extraction endpoint and fallback job lifecycle
   models.py             Pydantic API/data contracts
   renderer.py           Jinja2 rendering entry point
   secrets.py            OS credential vault / encrypted local fallback
   templates/listing.html PRIMEPICK GOODS eBay description template
 backend/tests/          Offline unit tests
-src/                    React workflow, editor, history, settings and preview
-desktop/                Electron lifecycle, preload and NSIS installer settings
-scripts/                Local run helper and Windows installer build script
-docs/                   Behavior and packaging notes
+src/                    React workflow, product browser panel, editor, history, settings and preview
+desktop/                Electron lifecycle, built-in product browser, preload and NSIS installer settings
+scripts/                Windows installer build scripts (Git Bash and PowerShell)
+docs/                   Architecture notes and the end-user guide
+start.cmd / start.sh    One-command local setup and launch (Windows / Bash)
+scripts/start_helper.py Change detection used by start.cmd
 ```
 
 ## Important limitations and safety notes

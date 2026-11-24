@@ -4,12 +4,23 @@
 
 You don't need to install Python, Node.js, a browser, or anything else. Everything the app needs is inside the setup file.
 
-1. Download **PrimePick-Goods-Setup-0.1.0.exe** from the link you were sent.
+1. Download **PrimePick-Goods-Setup-<version>.exe** (for example `PrimePick-Goods-Setup-0.1.2.exe`) from the link you were sent.
 2. Double-click the file.
 3. If Windows shows **"Windows protected your PC"**, select **More info**, then **Run anyway**. This warning appears because the app is new and not yet signed with a paid publisher certificate. It does not mean anything is wrong.
 4. Follow the installer and select **Install**. Admin rights are not needed. The app opens when the installer finishes, and a **PrimePick Goods Listing Generator** shortcut is added to your desktop and Start menu.
 
 To uninstall, open Windows **Settings → Apps**, find PrimePick Goods Listing Generator, and select **Uninstall**.
+
+## Or: run it from the project folder
+
+Use this if you were given the project folder (or downloaded it from GitHub as a ZIP) instead of the setup file. You need **Python 3.11 or newer** (tick **Add python.exe to PATH** when installing it) and **Node.js 20 or newer** installed.
+
+1. Open the project folder.
+2. Double-click **start.cmd**. If Windows shows a security warning (common for files from a downloaded ZIP), select **Run**, or **More info** then **Run anyway**.
+3. The first time, it downloads and prepares everything it needs. This can take several minutes. After that, it starts in a few seconds.
+4. The app window opens. Keep the black command window open while you use the app; closing the app window stops everything.
+
+Double-click **start.cmd** every time you want to use the app. If something goes wrong, the black window stays open and explains the problem. (If you use Git Bash, `bash start.sh` does the same thing.)
 
 ## First launch
 
@@ -37,8 +48,10 @@ Open **Settings** to view all-time input, output, and total tokens plus estimate
 
 ## Helpful notes
 
-- The product browser is visible and uses a local profile, so normal page cookies can persist between runs. You are responsible for any sign-in activity in that browser.
-- A browser verification screen should be completed only by the user. If it remains on screen, wait until the page changes before pressing **Continue**.
+- The product browser panel keeps its own cookies between runs, so you may need to complete an AliExpress check less often after the first time. You are responsible for any sign-in activity in that panel.
+- Only you should complete a verification screen. If **Extract this product** says the page is still a check or has not loaded, wait until the product page is fully showing and try again. **Reload** and **Back** in the panel toolbar work like a normal browser.
+- If AliExpress keeps blocking your network, wait a while and try again, or try a different internet connection.
 - Remote product images may not be suitable or available for an eBay description. Check image permissions and availability before publishing.
 - The application needs internet access for AliExpress and OpenAI. OpenAI calls use your account and API billing.
 - If a page fails, try the original public product URL again. Do not share API keys with anyone.
+- To update the app, install the newer setup file over the existing one. Your settings and saved listings are kept.
