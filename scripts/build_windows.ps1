@@ -37,11 +37,8 @@ try {
     & $Python -m pip install -r (Join-Path $Root 'backend/requirements-build.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Could not install the backend build requirements.' }
 
+    # No browser is bundled: the app drives the Microsoft Edge that ships with Windows.
     if (Test-Path $BrowserDir) { Remove-Item -Recurse -Force $BrowserDir }
-    New-Item -ItemType Directory -Force -Path $BrowserDir | Out-Null
-    $env:PLAYWRIGHT_BROWSERS_PATH = $BrowserDir
-    & $Python -m playwright install chromium
-    if ($LASTEXITCODE -ne 0) { throw 'Could not download the bundled Playwright Chromium browser.' }
 
     $BackendResources = Join-Path $Desktop 'resources/backend'
     if (Test-Path $BackendResources) { Remove-Item -Recurse -Force $BackendResources }
@@ -56,8 +53,8 @@ try {
         --paths (Join-Path $Root 'backend') `
         --add-data "$(Join-Path $Root 'backend/app/templates');app/templates" `
         --add-data "$(Join-Path $Root 'frontend_dist');frontend_dist" `
-        --collect-all playwright `
-        --collect-all greenlet `
+        --exclude-module playwright `
+        --exclude-module greenlet `
         --collect-all fastapi `
         --collect-all starlette `
         --collect-all pydantic `

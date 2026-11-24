@@ -1,16 +1,27 @@
 # PrimePick Goods — Quick Start
 
+## Install (one time)
+
+You don't need to install Python, Node.js, a browser, or anything else. Everything the app needs is inside the setup file.
+
+1. Download **PrimePick-Goods-Setup-0.1.0.exe** from the link you were sent.
+2. Double-click the file.
+3. If Windows shows **"Windows protected your PC"**, select **More info**, then **Run anyway**. This warning appears because the app is new and not yet signed with a paid publisher certificate. It does not mean anything is wrong.
+4. Follow the installer and select **Install**. Admin rights are not needed. The app opens when the installer finishes, and a **PrimePick Goods Listing Generator** shortcut is added to your desktop and Start menu.
+
+To uninstall, open Windows **Settings → Apps**, find PrimePick Goods Listing Generator, and select **Uninstall**.
+
 ## First launch
 
-1. Install PrimePick Goods Listing Generator using the Windows setup file and open it from the desktop shortcut or Start menu.
+1. Open PrimePick Goods Listing Generator from the desktop shortcut or the Start menu.
 2. Choose **Settings** in the left navigation.
 3. Enter your own OpenAI API key, confirm the model setting, and select **Save settings**. The saved key is hidden in the app and stored for your Windows user.
 4. Choose **New listing**.
 
 ## Create a listing
 
-1. Paste a public AliExpress product URL and select **Extract product**.
-2. A normal Chromium window opens on the product page. If AliExpress asks you to verify that you are human, complete the check in Chromium. Return to the app and press **Continue**. PrimePick Goods does not solve or bypass the challenge.
+1. Paste a public AliExpress product URL and select **Open product**.
+2. The product page opens in a browser panel inside the app. Use it like a normal browser: if AliExpress asks you to verify that you are not a robot, complete the check in the panel. When the product page is showing, select **Extract this product**. PrimePick Goods does not solve or bypass the check; you complete it yourself.
 3. Review the title, description, specifications, variations, package details, warnings, and image choices. The extractor prefers the page's Open Graph title and a complete item AI overview when available; otherwise it uses metadata description and other page fallbacks. Confirm important information on the source page.
 4. Select **Generate eBay copy**. OpenAI creates a structured draft; the app displays any missing or uncertain facts as private seller review notes.
 5. Edit the title and listing fields as needed. Review product compatibility and safety details before publishing.

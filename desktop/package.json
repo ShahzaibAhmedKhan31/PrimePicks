@@ -1,9 +1,10 @@
 {
   "name": "primepick-goods-desktop",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "PrimePick Goods Listing Generator desktop shell",
   "main": "main.cjs",
+  "packageManager": "traversal@1.0.0",
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win nsis --x64"
@@ -27,8 +28,7 @@
       "assets/primepick.ico"
     ],
     "extraResources": [
-      { "from": "resources/backend", "to": "backend", "filter": ["**/*"] },
-      { "from": "resources/playwright-browsers", "to": "playwright-browsers", "filter": ["**/*"] }
+      { "from": "resources/backend", "to": "backend", "filter": ["**/*"] }
     ],
     "directories": { "output": "dist" },
     "win": {

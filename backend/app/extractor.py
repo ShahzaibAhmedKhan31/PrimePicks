@@ -544,17 +544,39 @@ def parse_product_html(html: str, source_url: str) -> ProductData:
 
 
 _CHALLENGE_RE = re.compile(
-    r"(verify\s+you(?:'re|\s+are)\s+human|security\s+verification|captcha|slide\s+to\s+verify|unusual\s+traffic|robot\s+check|verify\s+your\s+account)",
+    r"(verify\s+you(?:'re|\s+are)\s+human|security\s+verification|captcha|slide\s+to\s+verify|unusual\s+traffic|robot\s+check|verify\s+your\s+account"
+    # AliExpress/Alibaba block page: "We have detected unusual/inappropriate network activity"
+    r"|(?:unusual|inappropriate|abnormal|suspicious)\s+(?:network\s+)?(?:activity|traffic|behaviou?r)"
+    r"|please\s+slide\s+to\s+verify|drag\s+the\s+slider)",
     re.I,
 )
+# AliExpress serves its block page from /_____tmd_____/punish (x5sec/baxia challenge).
+_CHALLENGE_URL_RE = re.compile(r"captcha|verify|security|punish|_____tmd_____|x5sec|baxia", re.I)
 
 
 def looks_like_verification(url: str, html: str) -> bool:
-    if re.search(r"captcha|verify|security", url, re.I):
+    if _CHALLENGE_URL_RE.search(url):
         return True
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True)[:20_000]
     return bool(_CHALLENGE_RE.search(text))
+
+
+async def _frame_is_shown_to_user(frame: Any) -> bool:
+    """True when an iframe is visible and large enough to be a challenge the user can act on.
+
+    Product pages routinely contain hidden challenge frames (an invisible Google reCAPTCHA
+    badge, background "punish" frames for recommendation widgets). Only frames the user can
+    actually see should pause extraction; otherwise the user is asked to solve nothing.
+    """
+    try:
+        element = await frame.frame_element()
+        if not await element.is_visible():
+            return False
+        box = await element.bounding_box()
+    except Exception:
+        return False
+    return bool(box and box["width"] >= 200 and box["height"] >= 120)
 
 
 async def page_needs_manual_verification(page: Any) -> bool:
@@ -564,11 +586,72 @@ async def page_needs_manual_verification(page: Any) -> bool:
         if frame == page.main_frame:
             continue
         try:
-            if looks_like_verification(frame.url, await frame.content()):
+            if looks_like_verification(frame.url, await frame.content()) and await _frame_is_shown_to_user(frame):
                 return True
         except Exception:
             continue
     return False
+
+
+def _parse_loaded_product(html: str, page_url: str) -> ProductData:
+    product = parse_product_html(html, page_url)
+    if not product.title.strip() and not product.images:
+        raise ExtractionError(
+            "The product page did not load fully (no title or images were found). "
+            "If AliExpress showed a verification or warning, complete it in the browser window and try again."
+        )
+    return product
+
+
+def extract_product_from_html(page_url: str, html: str) -> ProductData:
+    """Extract a product from a page the user opened and loaded themselves.
+
+    Used by the desktop app's built-in browser panel: the user browses to the product
+    and completes any AliExpress check by hand, then the app sends the page HTML here.
+    """
+    page_url = validate_aliexpress_url(page_url)
+    if looks_like_verification(page_url, html):
+        raise ExtractionError(
+            "AliExpress is still showing a verification or warning page. "
+            "Complete it in the browser panel, wait for the product page to appear, then click Extract this product."
+        )
+    if not re.search(r"/(?:item|i)/\d+", urlsplit(page_url).path):
+        raise ExtractionError(
+            "This doesn't look like a product page. Open a single AliExpress product, then click Extract this product."
+        )
+    return _parse_loaded_product(html, page_url)
+
+
+# Prefer the browsers already installed on Windows (Edge ships with Windows 10/11).
+# A regular Edge/Chrome build is challenged less often by AliExpress than Playwright's
+# test Chromium, and it means the installer does not need to bundle a browser.
+# "chromium" (Playwright's own build) remains as a developer fallback.
+BROWSER_CHANNELS: tuple[str, ...] = ("msedge", "chrome", "chromium")
+
+
+async def _launch_browser_context(playwright: Any) -> Any:
+    last_error: Exception | None = None
+    for channel in BROWSER_CHANNELS:
+        # Edge, Chrome and Chromium profiles are not interchangeable, so keep one per browser.
+        profile_dir = get_data_dir() / f"browser-profile-{channel}"
+        options: dict[str, Any] = {
+            "headless": False,
+            "locale": "en-US",
+            "viewport": {"width": 1440, "height": 950},
+        }
+        if channel != "chromium":
+            options["channel"] = channel
+        try:
+            context = await playwright.chromium.launch_persistent_context(str(profile_dir), **options)
+        except Exception as error:  # browser not installed or failed to start; try the next one
+            logger.info("Could not start %s browser: %s", channel, type(error).__name__)
+            last_error = error
+            continue
+        logger.info("Using %s browser for extraction", channel)
+        return context
+    raise ExtractionError(
+        "Microsoft Edge could not be opened. Make sure Microsoft Edge is installed and up to date, then try again."
+    ) from last_error
 
 
 async def extract_product(
@@ -576,26 +659,28 @@ async def extract_product(
     report: ProgressCallback,
     continue_event: asyncio.Event,
 ) -> ProductData:
-    """Open a visible Chromium window and extract public, rendered page content.
+    """Open a visible browser window (Edge by default) and extract public, rendered page content.
 
     Verification is deliberately left to the user. This routine waits while the
     browser stays open and resumes only when the UI signals that the user is done.
     """
     url = validate_aliexpress_url(url)
-    await report("opening", "Opening the product page in Chromium...")
+    await report("opening", "Opening the product page in Microsoft Edge...")
     try:
         from playwright.async_api import TimeoutError as PlaywrightTimeoutError
         from playwright.async_api import async_playwright
 
         async with async_playwright() as playwright:
-            profile_dir = get_data_dir() / "browser-profile"
-            context = await playwright.chromium.launch_persistent_context(
-                str(profile_dir),
-                headless=False,
-                locale="en-US",
-                viewport={"width": 1440, "height": 950},
-            )
-            page = context.pages[0] if context.pages else await context.new_page()
+            context = await _launch_browser_context(playwright)
+            # Edge's startup tab can be taken over by its first-run/welcome flow on a new
+            # profile (navigation then fails with "frame was detached"), so use a fresh tab.
+            startup_pages = list(context.pages)
+            page = await context.new_page()
+            for startup_page in startup_pages:
+                try:
+                    await startup_page.close()
+                except Exception:
+                    pass
             try:
                 await report("waiting", "Waiting for the product page to load...")
                 try:
@@ -614,7 +699,7 @@ async def extract_product(
                         break
                     await report(
                         "verification_required",
-                        "AliExpress is asking for a human verification. Complete it in the Chromium window, then return here and choose Continue.",
+                        "AliExpress is asking for a human verification. Complete it in the Microsoft Edge window, then return here and choose Continue.",
                     )
                     await continue_event.wait()
                     continue_event.clear()
@@ -624,8 +709,11 @@ async def extract_product(
                 await report("extracting", "Extracting product details and images...")
                 # Some product pages populate their gallery and options after initial DOM load.
                 await page.wait_for_timeout(1_500)
-                html = await page.content()
-                product = parse_product_html(html, page.url)
+                if await page_needs_manual_verification(page):
+                    raise ExtractionError(
+                        "AliExpress is still showing a verification page. Complete it in the browser window, then try again."
+                    )
+                product = _parse_loaded_product(await page.content(), page.url)
                 await report("completed", "Product information extracted. Review the details before generating copy.")
                 return product
             finally:
@@ -638,5 +726,5 @@ async def extract_product(
         logger.exception("AliExpress extraction failed (%s)", type(error).__name__)
         name = type(error).__name__
         if name in {"Error", "TargetClosedError"}:
-            raise ExtractionError("The product browser closed before extraction finished. Try again and keep Chromium open.") from error
-        raise ExtractionError("We couldn't read this AliExpress page. Check the link, connection, and any verification shown in Chromium, then try again.") from error
+            raise ExtractionError("The product browser closed before extraction finished. Try again and keep the browser window open.") from error
+        raise ExtractionError("We couldn't read this AliExpress page. Check the link, connection, and any verification shown in the browser window, then try again.") from error

@@ -19,9 +19,10 @@ from app import database
 from app.ai import TokenUsage, generate_listing
 from app.ai_pricing import get_model_rates
 from app.config import DEFAULT_MODEL, get_frontend_dir
-from app.extractor import ExtractionError, extract_product, validate_aliexpress_url
+from app.extractor import ExtractionError, extract_product, extract_product_from_html, validate_aliexpress_url
 from app.models import (
     ExtractionStartRequest,
+    HtmlExtractionRequest,
     GenerateRequest,
     ListingContent,
     ProductData,
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 class ExtractionJob:
     id: str
     status: str = "opening"
-    message: str = "Opening the product page in Chromium..."
+    message: str = "Opening the product page in Microsoft Edge..."
     product: ProductData | None = None
     error: str | None = None
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"))
@@ -146,6 +147,16 @@ async def start_extraction(request: ExtractionStartRequest) -> dict[str, Any]:
     extraction_jobs[job_id] = job
     job.task = asyncio.create_task(_run_extraction(job, url), name=f"extract-{job_id}")
     return _job_payload(job)
+
+
+@app.post("/api/extractions/html")
+async def extract_from_page_html(request: HtmlExtractionRequest) -> dict[str, Any]:
+    try:
+        # Parsing a large page is CPU work; keep the event loop responsive.
+        product = await asyncio.to_thread(extract_product_from_html, request.url, request.html)
+    except ExtractionError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {"product": product.model_dump(mode="json")}
 
 
 @app.get("/api/extractions/{job_id}")
